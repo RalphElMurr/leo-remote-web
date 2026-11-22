@@ -123,13 +123,23 @@
 
 <section class="card warnbox hidden" id="noBt">
   <h2>Bluetooth not available</h2>
-  <p class="muted" style="margin:0">Safari can't use Bluetooth. Open this page in the free <b>Bluefy</b> browser from the App Store.
-  On Android, use Chrome.</p>
+  <p class="muted" style="margin:0">Safari can't use Bluetooth. Use <b>Wi-Fi</b> below, or open this page in the free
+  <b>Bluefy</b> browser from the App Store. On Android, use Chrome.</p>
+</section>
+
+<section class="card hidden" id="wifiCard">
+  <h2>Over Wi-Fi</h2>
+  <p class="muted" style="margin:0 0 10px">When your phone and the car are on the same Wi-Fi (home Wi-Fi, or the car on
+  your hotspot), type the car's address from the Leo Remote app (e.g. <b>192.168.1.57</b>). Works in plain Safari.</p>
+  <div class="row">
+    <input id="carIp" inputmode="decimal" autocomplete="off" autocapitalize="off" placeholder="192.168.1.57" maxlength="21">
+    <button class="primary" id="openWifi" style="flex:0 0 auto">Open</button>
+  </div>
 </section>
 
 <section class="card hidden" id="setup">
   <h2>First time</h2>
-  <p class="muted" style="margin:0 0 10px">Enter the Bluetooth PIN shown in the Leo Remote app on the car screen.
+  <p class="muted" style="margin:0 0 10px">Enter the PIN shown in the Leo Remote app on the car screen.
   It's saved on this phone only.</p>
   <div class="row">
     <input id="pinInput" class="pin-input" inputmode="numeric" autocomplete="off" maxlength="12" placeholder="••••••">
@@ -242,6 +252,9 @@
   const QUIET_MS = 350;        // a reply is complete after this long without new packets
   const REPLY_TIMEOUT_MS = 25000;
   const DEMO = new URLSearchParams(location.search).has("demo");
+  // Served by the car itself over Wi-Fi (http://CAR_IP:8686/): talk to it with fetch instead of Bluetooth.
+  const WIFI = !DEMO && location.protocol === "http:" && location.port === "8686";
+  const WIFI_PORT = 8686;
 
   const $ = (id) => document.getElementById(id);
   const PREFIX = DEMO ? "leo-demo." : "leo."; // the demo never touches the real saved PIN
@@ -282,9 +295,9 @@
     const hasPin = !!store.get("pin", "");
     $("setup").classList.toggle("hidden", hasPin);
     $("connectBtn").disabled = !hasPin;
-    $("connectHint").textContent = hasPin
-      ? "Stand near the car. It must be awake (on, or sentry mode on)."
-      : "Enter the PIN first.";
+    $("connectHint").textContent = !hasPin ? "Enter the PIN first."
+      : WIFI ? "Your phone must be on the same Wi-Fi as the car, and the car awake (on, or sentry mode on)."
+      : "Stand near the car. It must be awake (on, or sentry mode on).";
   }
   function setConnectedUI(connected) {
     $("connectCard").classList.toggle("hidden", connected);
@@ -327,6 +340,47 @@
         else await rx.writeValue(data);
       },
       close() { try { device.gatt.disconnect(); } catch {} },
+    };
+  }
+
+  // Wi-Fi: the page came from the car, so it calls the car's small web server on the same address.
+  async function api(path, body, headers = {}) {
+    let r;
+    try {
+      r = await fetch(path, { method: "POST", cache: "no-store", body,
+        headers: { "Content-Type": "text/plain", "X-Leo": "1", ...headers } });
+    } catch {
+      throw new Error("Can't reach the car on Wi-Fi. Is it awake and on the same Wi-Fi as your phone?");
+    }
+    let j = {};
+    try { j = await r.json(); } catch {}
+    return { status: r.status, j };
+  }
+
+  async function wifiLogin(pin) {
+    const { status, j } = await api("/api/login", JSON.stringify({ pin }));
+    if (status === 200 && j.token) { store.set("token", j.token); return; }
+    const e = new Error(j.error || "Sign-in failed (" + status + ")");
+    e.wrongPin = status === 403 && /Wrong PIN/i.test(j.error || "");
+    throw e;
+  }
+
+  async function connectWifi(pin) {
+    if (!store.get("token", "")) await wifiLogin(pin);
+    return {
+      async write(text) {
+        const send = () => api("/api/cmd", text, { "X-Leo-Token": store.get("token", "") });
+        let r = await send();
+        if (r.status === 401) { // signed out (new PIN on the car, or too many phones): sign in again
+          store.del("token");
+          await wifiLogin(store.get("pin", ""));
+          r = await send();
+        }
+        if (r.status !== 200) throw new Error(r.j.error || "The car said error " + r.status);
+        onData(String(r.j.reply || "") + "\n");
+        clearTimeout(quietTimer); flushReply();
+      },
+      close() { setTimeout(onDisconnected, 0); },
     };
   }
 
@@ -408,6 +462,17 @@
     if (!pin) { refreshSetup(); return; }
     $("connectBtn").disabled = true;
     try {
+      if (WIFI) {
+        setPill("busy", "Connecting over Wi-Fi…");
+        link = await connectWifi(pin);
+        authed = true;
+        const s = await request("status"); // proves the car answers (and the PIN is right)
+        if (/Car status/.test(s)) { $("status").textContent = s; $("status").classList.remove("empty"); }
+        else toast(s, s.startsWith("⚠️"));
+        setPill("ready", "Connected over Wi-Fi");
+        setConnectedUI(true);
+        return;
+      }
       setPill("busy", "Pick the car…");
       link = DEMO ? await connectDemo() : await connectBle();
       setPill("busy", "Checking PIN…");
@@ -428,6 +493,7 @@
       if (link) link.close();
       onDisconnected();
       if (e && e.name === "NotFoundError") { setPill("idle", "Not connected"); return; } // picker closed
+      if (e && e.wrongPin) { store.del("pin"); store.del("token"); refreshSetup(); setPill("error", "PIN refused"); toast(e.message, true); return; }
       setPill("error", "Couldn't connect");
       toast((e && e.message) || "Couldn't connect", true);
     } finally {
@@ -497,8 +563,18 @@
   });
   $("pinInput").addEventListener("keydown", (e) => { if (e.key === "Enter") $("savePin").click(); });
   $("changePin").addEventListener("click", () => {
-    store.del("pin"); if (link) link.close(); refreshSetup(); $("pinInput").focus();
+    const token = store.get("token", "");
+    if (WIFI && token) api("/api/logout", "", { "X-Leo-Token": token }).catch(() => {});
+    store.del("pin"); store.del("token"); if (link) link.close(); refreshSetup(); $("pinInput").focus();
   });
+  $("carIp").value = store.get("carIp", "");
+  $("openWifi").addEventListener("click", () => {
+    const ip = $("carIp").value.trim().replace(/^https?:\/\//, "").replace(/[:/].*$/, "");
+    if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) { toast("Type the car's address as numbers, like 192.168.1.57", true); return; }
+    store.set("carIp", ip);
+    location.href = "http://" + ip + ":" + WIFI_PORT + "/";
+  });
+  $("carIp").addEventListener("keydown", (e) => { if (e.key === "Enter") $("openWifi").click(); });
   $("typeForm").addEventListener("submit", (e) => {
     e.preventDefault();
     const v = $("typeInput").value.trim().replace(/^\//, "");
@@ -508,11 +584,14 @@
     runCommand(v, e.submitter);
   });
 
-  if (!navigator.bluetooth && !DEMO) $("noBt").classList.remove("hidden");
+  if (!navigator.bluetooth && !DEMO && !WIFI) $("noBt").classList.remove("hidden");
+  if (!WIFI && !DEMO) $("wifiCard").classList.remove("hidden");
+  if (WIFI) $("connectLabel").textContent = "Connect over Wi-Fi";
   if (DEMO) { document.title = "Leo Remote (demo)"; if (!store.get("pin", "")) store.set("pin", "123456"); }
   renderTemp();
   refreshSetup();
   setConnectedUI(false);
+  if (WIFI && store.get("pin", "")) connect(); // no picker on Wi-Fi, so connect straight away
 })();
 </script>
 </body>
