@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0f14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Leo Remote</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b0f14'/%3E%3Cpath d='M14 38l5-12c1-3 3-4 6-4h14c3 0 5 1 6 4l5 12v8a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-2H22v2a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2z' fill='%2337d39b'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #0b0f14;
+    --panel: #141a22;
+    --panel-2: #1b232e;
+    --line: #26303d;
+    --text: #e8edf3;
+    --muted: #8b97a6;
+    --accent: #37d39b;
+    --accent-ink: #052b1d;
+    --warn: #ffb547;
+    --danger: #ff6b6b;
+    --cold: #5cc8ff;
+    --hot: #ff8a4c;
+    --radius: 16px;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f2f4f7; --panel: #ffffff; --panel-2: #eef1f5; --line: #dde2e8;
+      --text: #111821; --muted: #5d6b7a; --accent: #0f9d6b; --accent-ink: #ffffff;
+    }
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); }
+  body {
+    font: 16px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+    padding: max(12px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+    max-width: 560px; margin: 0 auto;
+  }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 4px 0 14px; }
+  h1 { font-size: 22px; margin: 0; letter-spacing: -0.02em; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px;
+    background: var(--panel); border: 1px solid var(--line); font-size: 13px; color: var(--muted); white-space: nowrap;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .pill[data-state="ready"] .dot { background: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 25%, transparent); }
+  .pill[data-state="busy"] .dot { background: var(--warn); animation: pulse 1s infinite; }
+  .pill[data-state="error"] .dot { background: var(--danger); }
+  @keyframes pulse { 50% { opacity: .35; } }
+
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; }
+  .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 10px; font-weight: 600; }
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .span-2 { grid-column: span 2; }
+  .span-3 { grid-column: 1 / -1; }
+
+  button {
+    font: inherit; color: var(--text); background: var(--panel-2); border: 1px solid var(--line);
+    border-radius: 12px; min-height: 52px; padding: 10px 8px; font-weight: 600; font-size: 15px;
+    display: flex; align-items: center; justify-content: center; gap: 8px; text-align: center;
+    transition: transform .08s ease, background .15s ease, opacity .15s ease; cursor: pointer;
+  }
+  button:active { transform: scale(.97); }
+  button:disabled { opacity: .45; }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+  button.big { min-height: 64px; font-size: 17px; }
+  button.danger-armed { background: var(--danger); color: #fff; border-color: transparent; }
+  button.cold { color: var(--cold); }
+  button.hot { color: var(--hot); }
+  button.working { position: relative; color: transparent !important; }
+  button.working::after {
+    content: ""; position: absolute; width: 20px; height: 20px; border-radius: 50%;
+    border: 2.5px solid var(--muted); border-top-color: var(--accent); animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .ico { font-size: 18px; line-height: 1; }
+
+  .status {
+    white-space: pre-wrap; font-size: 14.5px; line-height: 1.55; margin: 0; min-height: 3em;
+    font-family: inherit; color: var(--text);
+  }
+  .status.empty { color: var(--muted); }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .row > * { flex: 1; }
+
+  .stepper { display: grid; grid-template-columns: 52px 1fr 52px; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .stepper output { text-align: center; font-size: 26px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .stepper button { font-size: 22px; }
+
+  input {
+    font: inherit; color: var(--text); background: var(--panel-2); border: 1px solid var(--line);
+    border-radius: 12px; min-height: 52px; padding: 0 14px; width: 100%; font-size: 17px;
+  }
+  input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .pin-input { letter-spacing: .35em; font-variant-numeric: tabular-nums; text-align: center; font-size: 22px; }
+
+  .toast {
+    position: fixed; left: 16px; right: 16px; bottom: max(16px, env(safe-area-inset-bottom)); margin: 0 auto; max-width: 528px;
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.35); white-space: pre-wrap; font-size: 14.5px;
+    transform: translateY(150%); transition: transform .25s ease; z-index: 10;
+  }
+  .toast.show { transform: none; }
+  .toast.bad { border-color: var(--danger); }
+
+  .muted { color: var(--muted); font-size: 13.5px; }
+  .hint { margin: 10px 0 0; }
+  details summary { cursor: pointer; color: var(--muted); font-size: 14px; padding: 4px 0; }
+  .log { font-size: 12.5px; color: var(--muted); white-space: pre-wrap; max-height: 220px; overflow: auto; margin: 8px 0 0; }
+  .log b { color: var(--text); font-weight: 600; }
+  .hidden { display: none !important; }
+  .warnbox { border-color: var(--warn); }
+  .linkish { background: none; border: none; color: var(--muted); min-height: 0; padding: 4px; font-weight: 500; font-size: 13.5px; text-decoration: underline; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Leo Remote</h1>
+  <span class="pill" id="pill" data-state="idle"><span class="dot"></span><span id="pillText">Not connected</span></span>
+</header>
+
+<section class="card warnbox hidden" id="noBt">
+  <h2>Bluetooth not available</h2>
+  <p class="muted" style="margin:0">Safari can't use Bluetooth. Open this page in the free <b>Bluefy</b> browser from the App Store.
+  On Android, use Chrome.</p>
+</section>
+
+<section class="card hidden" id="setup">
+  <h2>First time</h2>
+  <p class="muted" style="margin:0 0 10px">Enter the Bluetooth PIN shown in the Leo Remote app on the car screen.
+  It's saved on this phone only.</p>
+  <div class="row">
+    <input id="pinInput" class="pin-input" inputmode="numeric" autocomplete="off" maxlength="12" placeholder="••••••">
+    <button class="primary" id="savePin" style="flex:0 0 96px">Save</button>
+  </div>
+</section>
+
+<section class="card" id="connectCard">
+  <button class="primary big" id="connectBtn" style="width:100%"><span class="ico">🚗</span><span id="connectLabel">Connect to the car</span></button>
+  <p class="muted hint" id="connectHint">Stand near the car. It must be awake (on, or sentry mode on).</p>
+</section>
+
+<section class="card">
+  <div class="row" style="margin-bottom:8px">
+    <h2 style="margin:0">Car</h2>
+    <button class="linkish" data-cmd="status" style="flex:0 0 auto">Refresh</button>
+  </div>
+  <pre class="status empty" id="status">Connect to see the battery, locks, doors and climate.</pre>
+</section>
+
+<section class="card">
+  <h2>Doors</h2>
+  <div class="grid">
+    <button class="big" data-cmd="lock"><span class="ico">🔒</span>Lock</button>
+    <button class="big" data-cmd="unlock" data-confirm="Tap again to unlock"><span class="ico">🔓</span>Unlock</button>
+    <button data-cmd="unlock driver" data-confirm="Tap again: driver door"><span class="ico">🚪</span>Driver door</button>
+    <button data-cmd="trunk open" data-confirm="Tap again to open trunk"><span class="ico">🧳</span>Open trunk</button>
+    <button data-cmd="mirrors fold"><span class="ico">🪞</span>Fold mirrors</button>
+    <button data-cmd="mirrors unfold">Unfold mirrors</button>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Climate</h2>
+  <div class="stepper">
+    <button id="tempDown" aria-label="Colder">−</button>
+    <output id="tempOut">22°C</output>
+    <button id="tempUp" aria-label="Warmer">+</button>
+  </div>
+  <div class="grid">
+    <button class="big primary" id="acOn"><span class="ico">❄️</span>A/C on</button>
+    <button class="big" data-cmd="ac off">A/C off</button>
+    <button class="hot" data-cmd="warmup"><span class="ico">🔥</span>Warm up</button>
+    <button class="cold" data-cmd="cooldown"><span class="ico">🧊</span>Cool down</button>
+    <button data-cmd="ac auto">A/C auto</button>
+    <button data-cmd="ac max">A/C max</button>
+  </div>
+  <div class="grid three" style="margin-top:8px">
+    <button data-cmd="defrost front">Defrost front</button>
+    <button data-cmd="defrost rear">Defrost rear</button>
+    <button data-cmd="defrost off">Defrost off</button>
+    <button data-cmd="wheel on">Wheel heat</button>
+    <button data-cmd="seatheat 2">Seat heat</button>
+    <button data-cmd="seatvent 2">Seat fan</button>
+    <button data-cmd="wheel off">Wheel off</button>
+    <button data-cmd="seatheat off">Heat off</button>
+    <button data-cmd="seatvent off">Fan off</button>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Windows &amp; roof</h2>
+  <div class="grid three">
+    <button data-cmd="windows close"><span class="ico">⬆️</span>Close</button>
+    <button data-cmd="windows vent">Vent</button>
+    <button data-cmd="windows open" data-confirm="Tap again to open">⬇️ Open</button>
+    <button data-cmd="sunroof close">Roof close</button>
+    <button data-cmd="sunroof tilt">Roof tilt</button>
+    <button data-cmd="sunroof stop">Roof stop</button>
+  </div>
+</section>
+
+<section class="card">
+  <h2>More</h2>
+  <div class="grid">
+    <button data-cmd="flash"><span class="ico">💡</span>Flash lights</button>
+    <button data-cmd="where"><span class="ico">📍</span>Where</button>
+    <button data-cmd="sentry on"><span class="ico">🛡</span>Sentry on</button>
+    <button data-cmd="sentry off">Sentry off</button>
+    <button data-cmd="keyfob on"><span class="ico">🔑</span>Phone key on</button>
+    <button data-cmd="keyfob off">Phone key off</button>
+  </div>
+  <form id="typeForm" class="row" style="margin-top:8px">
+    <input id="typeInput" placeholder="Type a command, e.g. temp 21" autocomplete="off" autocapitalize="off" enterkeyhint="send">
+    <button type="submit" style="flex:0 0 80px">Send</button>
+  </form>
+</section>
+
+<section class="card">
+  <details>
+    <summary>Messages from the car</summary>
+    <div class="log" id="log"></div>
+  </details>
+  <div class="row" style="margin-top:6px">
+    <button class="linkish" id="changePin" style="flex:0 0 auto">Change PIN</button>
+    <button class="linkish" id="disconnectBtn" style="flex:0 0 auto">Disconnect</button>
+  </div>
+</section>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  "use strict";
+
+  // Nordic UART service, as served by the Leo Remote app on the car (BluetoothServer.kt).
+  const NUS = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+  const RX = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"; // phone -> car
+  const TX = "6e400003-b5a3-f393-e0a9-e50e24dcca9e"; // car -> phone (notifications)
+  const QUIET_MS = 350;        // a reply is complete after this long without new packets
+  const REPLY_TIMEOUT_MS = 25000;
+  const DEMO = new URLSearchParams(location.search).has("demo");
+
+  const $ = (id) => document.getElementById(id);
+  const PREFIX = DEMO ? "leo-demo." : "leo."; // the demo never touches the real saved PIN
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(PREFIX + k); return v === null ? d : v; } catch { return d; } },
+    set(k, v) { try { localStorage.setItem(PREFIX + k, v); } catch {} },
+    del(k) { try { localStorage.removeItem(PREFIX + k); } catch {} },
+  };
+
+  // ---------------------------------------------------------------- state
+  let link = null;           // { write(text), close() }
+  let authed = false;
+  let pending = null;        // { resolve, reject, timer }
+  let rxBuf = "";
+  let quietTimer = null;
+  let queue = Promise.resolve();
+  let temp = Math.min(30, Math.max(16, parseInt(store.get("temp", "22"), 10) || 22));
+
+  // ---------------------------------------------------------------- UI helpers
+  function setPill(state, text) { $("pill").dataset.state = state; $("pillText").textContent = text; }
+  let toastTimer;
+  function toast(text, bad = false) {
+    const t = $("toast");
+    t.textContent = text; t.classList.toggle("bad", bad); t.classList.add("show");
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), bad ? 6000 : 3500);
+  }
+  function log(dir, text) {
+    const el = $("log");
+    const line = document.createElement("div");
+    const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    line.innerHTML = `<b>${dir === "out" ? "→" : "←"} ${time}</b> `;
+    line.appendChild(document.createTextNode(text));
+    el.prepend(line);
+    while (el.childNodes.length > 60) el.lastChild.remove();
+  }
+  function renderTemp() { $("tempOut").textContent = temp + "°C"; store.set("temp", String(temp)); }
+  function refreshSetup() {
+    const hasPin = !!store.get("pin", "");
+    $("setup").classList.toggle("hidden", hasPin);
+    $("connectBtn").disabled = !hasPin;
+    $("connectHint").textContent = hasPin
+      ? "Stand near the car. It must be awake (on, or sentry mode on)."
+      : "Enter the PIN first.";
+  }
+  function setConnectedUI(connected) {
+    $("connectCard").classList.toggle("hidden", connected);
+    $("disconnectBtn").classList.toggle("hidden", !connected);
+  }
+
+  // ---------------------------------------------------------------- transport
+  function onData(text) {
+    rxBuf += text;
+    clearTimeout(quietTimer);
+    quietTimer = setTimeout(flushReply, QUIET_MS);
+  }
+
+  function flushReply() {
+    const msg = rxBuf.replace(/\r/g, "").trim();
+    rxBuf = "";
+    if (!msg) return;
+    log("in", msg);
+    if (pending) {
+      const p = pending; pending = null; clearTimeout(p.timer); p.resolve(msg);
+    }
+  }
+
+  async function connectBle() {
+    if (!navigator.bluetooth) throw new Error("This browser can't use Bluetooth. Open the page in Bluefy.");
+    const device = await navigator.bluetooth.requestDevice({ filters: [{ services: [NUS] }] });
+    device.addEventListener("gattserverdisconnected", onDisconnected);
+    setPill("busy", "Connecting…");
+    const server = await device.gatt.connect();
+    const service = await server.getPrimaryService(NUS);
+    const rx = await service.getCharacteristic(RX);
+    const tx = await service.getCharacteristic(TX);
+    tx.addEventListener("characteristicvaluechanged", (e) => onData(new TextDecoder().decode(e.target.value)));
+    await tx.startNotifications();
+    const enc = new TextEncoder();
+    return {
+      async write(text) {
+        const data = enc.encode(text + "\n");
+        if (rx.writeValueWithResponse) await rx.writeValueWithResponse(data);
+        else await rx.writeValue(data);
+      },
+      close() { try { device.gatt.disconnect(); } catch {} },
+    };
+  }
+
+  // A simulated car for trying the page out (?demo). Never used otherwise.
+  function connectDemo() {
+    const car = { locked: true, ac: false, temp: 22, sentry: true, windows: 0, soc: 71 };
+    let ok = false;
+    const status = () =>
+      `🚗 Car status · ${new Date().toTimeString().slice(0, 5)}\n` +
+      `🔋 ${"▰".repeat(7)}${"▱".repeat(3)} ${car.soc}% · 412 km\n` +
+      `${car.locked ? "🔒 Locked" : "🔓 UNLOCKED"} · doors closed\n` +
+      `🪟 ${car.windows ? "windows " + car.windows + "%" : "windows closed"} · sunroof closed\n` +
+      `❄️ ${car.ac ? "A/C on (" + car.temp + "°C)" : "A/C off"} · inside 24°C, outside 31°C\n` +
+      `🛞 FL 250 FR 250 RL 245 RR 248 kPa\n` +
+      `⚙️ power off · gear P · 12V 12.6 V\n🛡 Sentry ${car.sentry ? "on" : "off"} · 18,240 km`;
+    const answer = (line) => {
+      const l = line.toLowerCase();
+      if (!ok) {
+        if (!l.startsWith("pin")) return "🔒 Send: pin <code shown on the car screen>";
+        if (line.slice(3).trim() !== "123456") return "Wrong PIN.";
+        ok = true; return "✅ PIN accepted. Commands: status, lock, unlock, ac 22, ac off, windows close, vent, trunk, flash, sentry on/off, help";
+      }
+      if (l === "status") return status();
+      if (l === "lock") { car.locked = true; return "✅ Locked 🔒"; }
+      if (l.startsWith("unlock")) { car.locked = false; return l.includes("driver") ? "✅ Driver door unlocked 🔓" : "✅ Unlocked 🔓"; }
+      if (l.startsWith("ac off")) { car.ac = false; return "✅ A/C off"; }
+      if (l.startsWith("ac")) { car.ac = true; const t = parseInt(l.split(" ")[1], 10); if (t) car.temp = t; return `✅ A/C on, set to ${car.temp}°C ❄️`; }
+      if (l === "warmup") { car.ac = true; car.temp = 26; return "✅ 🔥 Warming up (4 of 4 done)\n• A/C on, set to 26°C ❄️\n• Defrost on: windscreen + rear window\n• Driver seat heating on, level 2\n• Steering wheel heating on 🔥"; }
+      if (l === "cooldown") { car.ac = true; car.temp = 16; return "✅ 🧊 Cooling down (2 of 2 done)\n• Max cooling: A/C on at 16°C 🧊\n• Driver seat ventilation on, level 2"; }
+      if (l.startsWith("windows")) { car.windows = l.includes("close") ? 0 : l.includes("vent") ? 10 : 100; return "✅ Windows to " + car.windows + "% 🪟"; }
+      if (l.startsWith("sentry")) { car.sentry = l.endsWith("on"); return car.sentry ? "✅ Sentry mode on 🛡" : "✅ Sentry mode off"; }
+      if (l === "where") return "📍 33.8938, 35.5018 (±8 m, 2 min ago)";
+      if (l === "flash") return "✅ Flashed the hazard lights for 6 s 💡";
+      return "✅ Done: " + line;
+    };
+    setTimeout(() => onData("Leo Remote. Send: pin <code shown on the car screen>\n"), 300);
+    return Promise.resolve({
+      write(text) {
+        const reply = answer(text.trim()) + "\n";
+        // Arrives in 20-byte packets, like real BLE notifications.
+        const bytes = new TextEncoder().encode(reply);
+        let i = 0;
+        const tick = () => {
+          if (i >= bytes.length) return;
+          let end = Math.min(i + 20, bytes.length);
+          while (end < bytes.length && (bytes[end] & 0xc0) === 0x80) end--; // don't split a character
+          onData(new TextDecoder().decode(bytes.slice(i, end))); i = end; setTimeout(tick, 15);
+        };
+        setTimeout(tick, text.startsWith("flash") ? 1200 : 250);
+        return Promise.resolve();
+      },
+      close() { setTimeout(onDisconnected, 50); },
+    });
+  }
+
+  function onDisconnected() {
+    link = null; authed = false;
+    if (pending) { const p = pending; pending = null; clearTimeout(p.timer); p.reject(new Error("Disconnected")); }
+    setPill("idle", "Not connected");
+    setConnectedUI(false);
+    document.querySelectorAll("button.working").forEach((b) => b.classList.remove("working"));
+  }
+
+  /** Sends one line and waits for the car's whole reply. Commands run one at a time. */
+  function request(line) {
+    const run = () => new Promise((resolve, reject) => {
+      if (!link) return reject(new Error("Not connected"));
+      pending = { resolve, reject, timer: setTimeout(() => { pending = null; reject(new Error("The car didn't answer")); }, REPLY_TIMEOUT_MS) };
+      log("out", line.startsWith("pin") ? "pin ••••••" : line);
+      link.write(line).catch((e) => { if (pending) { clearTimeout(pending.timer); pending = null; } reject(e); });
+    });
+    const p = queue.then(run, run);
+    queue = p.catch(() => {});
+    return p;
+  }
+
+  async function connect() {
+    const pin = store.get("pin", "");
+    if (!pin) { refreshSetup(); return; }
+    $("connectBtn").disabled = true;
+    try {
+      setPill("busy", "Pick the car…");
+      link = DEMO ? await connectDemo() : await connectBle();
+      setPill("busy", "Checking PIN…");
+      await new Promise((r) => setTimeout(r, 500)); // let the greeting arrive first
+      rxBuf = ""; clearTimeout(quietTimer);
+      const reply = await request("pin " + pin);
+      if (!/PIN accepted/i.test(reply)) {
+        toast(reply, true);
+        if (/Wrong PIN/i.test(reply)) { store.del("pin"); refreshSetup(); }
+        link.close(); onDisconnected(); setPill("error", "PIN refused");
+        return;
+      }
+      authed = true;
+      setPill("ready", DEMO ? "Demo car" : "Connected");
+      setConnectedUI(true);
+      await refreshStatus();
+    } catch (e) {
+      if (link) link.close();
+      onDisconnected();
+      if (e && e.name === "NotFoundError") { setPill("idle", "Not connected"); return; } // picker closed
+      setPill("error", "Couldn't connect");
+      toast((e && e.message) || "Couldn't connect", true);
+    } finally {
+      $("connectBtn").disabled = !store.get("pin", "");
+    }
+  }
+
+  async function refreshStatus() {
+    try {
+      const s = await request("status");
+      if (/Car status/.test(s)) { $("status").textContent = s; $("status").classList.remove("empty"); }
+      else toast(s, s.startsWith("⚠️"));
+    } catch (e) { toast(e.message, true); }
+  }
+
+  async function runCommand(cmd, btn) {
+    if (!link || !authed) { toast("Connect to the car first."); return; }
+    btn && btn.classList.add("working");
+    try {
+      const reply = await request(cmd);
+      if (cmd === "status") {
+        if (/Car status/.test(reply)) { $("status").textContent = reply; $("status").classList.remove("empty"); }
+        else toast(reply, true);
+        return;
+      }
+      const bad = reply.startsWith("❌") || reply.startsWith("⚠️") || /^Won't|refused/i.test(reply);
+      toast(reply, bad);
+      if (reply.startsWith("✅")) setTimeout(refreshStatus, 1500); // show the change
+    } catch (e) {
+      toast(e.message, true);
+    } finally {
+      btn && btn.classList.remove("working");
+    }
+  }
+
+  // ---------------------------------------------------------------- wiring
+  // Risky buttons need a second tap within 3 s.
+  function armOrRun(btn) {
+    const confirmText = btn.dataset.confirm;
+    if (!confirmText || btn.classList.contains("danger-armed")) {
+      if (btn.dataset.label) { btn.innerHTML = btn.dataset.label; delete btn.dataset.label; }
+      btn.classList.remove("danger-armed");
+      clearTimeout(btn._disarm);
+      runCommand(btn.dataset.cmd, btn);
+      return;
+    }
+    if (!link || !authed) { toast("Connect to the car first."); return; }
+    btn.dataset.label = btn.innerHTML;
+    btn.textContent = confirmText;
+    btn.classList.add("danger-armed");
+    btn._disarm = setTimeout(() => {
+      btn.classList.remove("danger-armed");
+      if (btn.dataset.label) { btn.innerHTML = btn.dataset.label; delete btn.dataset.label; }
+    }, 3000);
+  }
+
+  document.querySelectorAll("[data-cmd]").forEach((b) => b.addEventListener("click", () => armOrRun(b)));
+  $("acOn").addEventListener("click", (e) => runCommand("ac " + temp, e.currentTarget));
+  $("tempDown").addEventListener("click", () => { temp = Math.max(16, temp - 1); renderTemp(); });
+  $("tempUp").addEventListener("click", () => { temp = Math.min(30, temp + 1); renderTemp(); });
+  $("connectBtn").addEventListener("click", connect);
+  $("disconnectBtn").addEventListener("click", () => { if (link) link.close(); });
+  $("savePin").addEventListener("click", () => {
+    const v = $("pinInput").value.replace(/\D/g, "");
+    if (v.length < 4) { toast("That PIN looks too short.", true); return; }
+    store.set("pin", v); $("pinInput").value = ""; refreshSetup(); toast("PIN saved on this phone.");
+  });
+  $("pinInput").addEventListener("keydown", (e) => { if (e.key === "Enter") $("savePin").click(); });
+  $("changePin").addEventListener("click", () => {
+    store.del("pin"); if (link) link.close(); refreshSetup(); $("pinInput").focus();
+  });
+  $("typeForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const v = $("typeInput").value.trim().replace(/^\//, "");
+    if (!v) return;
+    if (/^pin\b/i.test(v)) { toast("Use Change PIN instead."); return; }
+    $("typeInput").value = "";
+    runCommand(v, e.submitter);
+  });
+
+  if (!navigator.bluetooth && !DEMO) $("noBt").classList.remove("hidden");
+  if (DEMO) { document.title = "Leo Remote (demo)"; if (!store.get("pin", "")) store.set("pin", "123456"); }
+  renderTemp();
+  refreshSetup();
+  setConnectedUI(false);
+})();
+</script>
+</body>
+</html>
