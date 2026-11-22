@@ -410,6 +410,7 @@
       <div class="head"><h2>Where's my car</h2><button class="link" id="locRefresh">Update</button></div>
       <iframe class="map hidden" id="map" title="Car location" loading="lazy" referrerpolicy="no-referrer"></iframe>
       <div class="empty" id="locEmpty">Tap Update to get the car's GPS position.</div>
+      <div class="chips hidden" id="locLabel" style="margin:10px 0 0"></div>
       <div class="coords hidden" id="coords"></div>
       <div class="grid2 hidden" id="locBtns">
         <a class="btn primary" id="gmaps" target="_blank" rel="noopener noreferrer" style="text-decoration:none"><svg class="i"><use href="#i-map"/></svg>Open in Google Maps</a>
@@ -436,6 +437,29 @@
         <li>With "lock when I leave" on (set on the car screen), it locks once your phone has been gone about 20 seconds.</li>
         <li>It only works while the car is awake, so turn <b>sentry on</b> when you park.</li>
       </ol>
+    </section>
+
+    <section class="card">
+      <div class="head"><h2>Notifications</h2><span class="chip" id="ntfyChip">–</span></div>
+      <p class="muted small" style="margin:0 0 10px">Get a notification on your iPhone when you park (battery and location), on every scheduled wake, and for alerts. Uses the free <b>ntfy</b> app. Your phone page also uses these reports to show the battery and parked spot while the car sleeps.</p>
+      <ol class="steps small" style="margin-bottom:10px">
+        <li>Install <b>ntfy</b> from the App Store and open it.</li>
+        <li>Tap <b>+</b>, paste the topic below, and tap <b>Subscribe</b>. Allow notifications.</li>
+        <li>Tap <b>Turn on</b> here, then <b>Send test</b>.</li>
+      </ol>
+      <div class="row2" style="margin-bottom:10px">
+        <input id="ntfyTopic" readonly placeholder="Connect to the car to see the topic">
+        <button class="btn" id="copyTopic" style="flex:0 0 auto">Copy</button>
+      </div>
+      <div class="grid3">
+        <button class="btn primary" data-cmd="notify on">Turn on</button>
+        <button class="btn" data-cmd="notify off">Turn off</button>
+        <button class="btn" data-cmd="notify test">Send test</button>
+        <button class="btn" data-cmd="notify wake on">Wake reports on</button>
+        <button class="btn" data-cmd="notify wake off">Wake reports off</button>
+        <button class="btn" data-cmd="notify newtopic" data-confirm="Again">New topic</button>
+      </div>
+      <p class="muted small" style="margin:10px 2px 0" id="ntfyInfo">The topic works like a password: anyone who has it can read the reports. Reports pass through ntfy.sh and are kept there for about 12 hours.</p>
     </section>
 
     <section class="card">
@@ -492,7 +516,7 @@
 <script>
 (() => {
   "use strict";
-  const PAGE_VERSION = "0.4.0";
+  const PAGE_VERSION = "0.4.1";
   // Nordic UART service: the car's Bluetooth LE serial line.
   const NUS = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
   const RX = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"; // phone -> car
@@ -692,6 +716,7 @@
     clearInterval(pollTimer);
     document.querySelectorAll(".working").forEach((b) => b.classList.remove("working"));
     refreshSetup();
+    showOffline();
   }
 
   /** Sends one line and waits for the car's whole reply. Commands run one at a time. */
@@ -771,6 +796,8 @@
       try { st = JSON.parse(s); } catch { throw new Error(/Car status/.test(s) ? "Update the Leo Remote app on the car (it doesn't send app data yet)." : s); }
       if (st.error) throw new Error("The car couldn't read its status: " + st.error);
       last = st; render(st);
+      store.set("lastStatus", JSON.stringify(st)); // shown while the car sleeps
+      if (st.notify) store.set("ntfy", JSON.stringify({ server: st.notify.server, topic: st.notify.topic, on: st.notify.on }));
       if (connectedLabel && $("pill").dataset.state !== "ready") setPill("ready", connectedLabel); // back after a dropout
     } catch (e) {
       logError("status", e.message || e);
@@ -794,10 +821,12 @@
     bar.firstElementChild.style.width = (soc != null ? Math.max(2, Math.min(100, soc)) : 0) + "%";
     bar.classList.toggle("low", soc != null && soc < 20);
     bar.classList.toggle("mid", soc != null && soc >= 20 && soc < 40);
-    $("updated").textContent = s.time ? "Updated " + fmtTime(s.time) : "";
+    const live = s._live !== false;
+    $("updated").textContent = s.time ? (live ? "Updated " : "Last seen ") + fmtWhen(s.time) : "";
     $("carPic").classList.toggle("on", s.power === "on" || s.power === "driving");
 
     const c = [];
+    if (!live) c.push(chip("Last report · car not connected", "warn", "refresh"));
     if (s.locked === true) c.push(chip("Locked", "ok", "lock"));
     else if (s.locked === false) c.push(chip("Unlocked", "warn", "unlock"));
     if (s.power) c.push(chip(s.power === "off" ? "Off" : s.power === "on" ? "On" : "Driving", s.power === "off" ? "" : "blue", "power"));
@@ -848,6 +877,57 @@
       if (!saved && pick) { store.set("carIp", pick); $("carIp").value = pick; }
     }
     $("versions").textContent = `Page ${PAGE_VERSION}` + (s.app ? ` · car app ${s.app}` : "");
+    if (s.notify) {
+      $("ntfyTopic").value = s.notify.topic || "";
+      $("ntfyChip").textContent = s.notify.on ? "On" : "Off";
+      $("ntfyChip").className = "chip " + (s.notify.on ? "ok" : "");
+    }
+    if (!liveFix && s.parked && s.parked.lat != null) showFix(s.parked.lat, s.parked.lon, s.parked.accuracy, "Parked here · " + fmtWhen(s.parked.time), false);
+  }
+  function fmtWhen(t) {
+    const d = new Date(t), today = new Date();
+    return d.toDateString() === today.toDateString() ? fmtTime(t)
+      : d.toLocaleDateString([], { day: "numeric", month: "short" }) + " " + fmtTime(t);
+  }
+
+  // ------------------------------------------------------------ while the car sleeps
+  // The car posts a report to ntfy when it's switched off and on each scheduled wake; ntfy keeps
+  // them for ~12 h, so the page can show the latest even when the car can't be reached.
+  let ntfyFetchedAt = 0;
+  async function ntfyLatest() {
+    let cfg = null;
+    try { cfg = JSON.parse(store.get("ntfy", "")); } catch {}
+    if (DEMO || !cfg || !cfg.topic || !cfg.on) return null;
+    const r = await fetch(`${cfg.server}/${encodeURIComponent(cfg.topic)}/json?poll=1&since=all`, { cache: "no-store" });
+    const msgs = (await r.text()).split("\n").filter(Boolean)
+      .map((l) => { try { return JSON.parse(l); } catch { return null; } })
+      .filter((m) => m && m.event === "message" && /🔋/.test(m.message || ""));
+    if (!msgs.length) return null;
+    const m = msgs[msgs.length - 1], t = m.message, o = { time: m.time * 1000 };
+    let x;
+    if ((x = t.match(/🔋 (\d+)%/))) o.soc = +x[1];
+    if ((x = t.match(/(\d+) km/))) o.rangeKm = +x[1];
+    if (/🔒 Locked/.test(t)) o.locked = true; else if (/UNLOCKED/.test(t)) o.locked = false;
+    if ((x = t.match(/([\d.]+) V\b/))) o.v12 = +x[1];
+    if ((x = t.match(/📍 (-?[\d.]+),\s*(-?[\d.]+)/))) { o.lat = +x[1]; o.lon = +x[2]; }
+    o.charging = /Charging/.test(t); o.plugged = /Plugged/.test(t);
+    return o;
+  }
+  async function showOffline() {
+    if (link) return;
+    let cached = null;
+    try { cached = JSON.parse(store.get("lastStatus", "")); } catch {}
+    if (cached) render({ ...cached, _live: false });
+    if (Date.now() - ntfyFetchedAt < 60000) return;
+    ntfyFetchedAt = Date.now();
+    try {
+      const n = await ntfyLatest();
+      if (link || !n || (cached && n.time <= (cached.time || 0))) return;
+      const merged = { ...(cached || {}), _live: false, time: n.time, power: "off", charging: n.charging, plugged: n.plugged };
+      ["soc", "rangeKm", "locked", "v12"].forEach((k) => { if (n[k] != null) merged[k] = n[k]; });
+      if (n.lat != null) merged.parked = { time: n.time, lat: n.lat, lon: n.lon };
+      render(merged);
+    } catch (e) { logError("ntfy", e.message || e); }
   }
   function setTile(id, text, cls = "") { const e = $(id); e.textContent = text; e.className = "v " + cls; }
   function short(k) { return { "front left": "FL", "front right": "FR", "rear left": "RL", "rear right": "RR" }[k] || k; }
@@ -872,6 +952,19 @@
   }
   function escapeHtml(s) { return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
 
+  let liveFix = false;
+  function showFix(latN, lonN, acc, label, live) {
+    const lat = (+latN).toFixed(6), lon = (+lonN).toFixed(6), d = 0.004;
+    const src = `https://www.openstreetmap.org/export/embed.html?bbox=${+lonN - d},${+latN - d * 0.6},${+lonN + d},${+latN + d * 0.6}&layer=mapnik&marker=${lat},${lon}`;
+    if ($("map").getAttribute("src") !== src) $("map").setAttribute("src", src);
+    $("gmaps").href = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
+    $("amaps").href = `https://maps.apple.com/?q=My%20car&ll=${lat},${lon}`;
+    $("coords").textContent = `${lat}, ${lon}` + (acc ? ` · ±${Math.round(acc)} m` : "");
+    $("locLabel").innerHTML = chip(label, live ? "ok" : "blue", "pin");
+    ["map", "coords", "locBtns", "locLabel"].forEach((id) => $(id).classList.remove("hidden"));
+    $("locEmpty").classList.add("hidden");
+  }
+
   async function findCar() {
     if (!link) { toast("Connect to the car first."); return; }
     $("locRefresh").classList.add("working");
@@ -879,15 +972,9 @@
       const r = await request("where json");
       let f;
       try { f = JSON.parse(r); } catch { throw new Error(r.replace(/^📍\s*/, "")); }
-      const lat = f.lat.toFixed(6), lon = f.lon.toFixed(6);
-      const d = 0.004;
-      $("map").src = `https://www.openstreetmap.org/export/embed.html?bbox=${f.lon - d},${f.lat - d * 0.6},${f.lon + d},${f.lat + d * 0.6}&layer=mapnik&marker=${lat},${lon}`;
-      $("gmaps").href = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
-      $("amaps").href = `https://maps.apple.com/?q=My%20car&ll=${lat},${lon}`;
       const age = f.ageSec < 90 ? "just now" : f.ageSec < 3600 ? Math.round(f.ageSec / 60) + " min ago" : Math.round(f.ageSec / 3600) + " h ago";
-      $("coords").textContent = `${lat}, ${lon}` + (f.accuracy ? ` · ±${Math.round(f.accuracy)} m` : "") + ` · ${age}`;
-      ["map", "coords", "locBtns"].forEach((id) => $(id).classList.remove("hidden"));
-      $("locEmpty").classList.add("hidden");
+      liveFix = true;
+      showFix(f.lat, f.lon, f.accuracy, "Live · " + age, true);
     } catch (e) {
       toast(e.message || "Couldn't get the location", true); logError("location", e.message || e);
     } finally { $("locRefresh").classList.remove("working"); }
@@ -923,7 +1010,7 @@
 
   // ------------------------------------------------------------ demo car (?demo)
   function connectDemo() {
-    const car = { locked: true, ac: false, temp: 22, sentry: true, win: 0, soc: 71, power: "off", key: true, trunk: false };
+    const car = { locked: true, ac: false, temp: 22, sentry: true, win: 0, soc: 71, power: "off", key: true, trunk: false, notify: true, wakeReports: true };
     let ok = false;
     const answer = (line) => {
       const l = line.toLowerCase();
@@ -937,7 +1024,10 @@
         sunroof: 0, acOn: car.ac, acTemp: car.temp, inside: car.ac ? 23 : 31, outside: 34, tires: { FL: 250, FR: 252, RL: 245, RR: 248 }, power: car.power, gear: "P", speed: 0,
         v12: 12.6, odometer: 18240, sentry: car.sentry, guard: 30, defaultTemp: 22,
         key: { on: car.key, phone: "iPhone", unlockOnArrive: true, lockOnLeave: false, driverOnly: false, state: car.key ? "Phone key: watching for iPhone" : "Phone key: off" },
-        remote: { wifi: "http://192.168.1.57:8686", tailscale: "http://100.101.7.42:8686" }, app: "0.4.0 (demo)" });
+        remote: { wifi: "http://192.168.1.57:8686", tailscale: "http://100.101.7.42:8686" }, app: "0.4.1 (demo)",
+        notify: { on: car.notify, topic: "leo-demo0000000000000000", server: "https://ntfy.sh", wakeReports: car.wakeReports, location: true },
+        wake: { on: true, everyMin: 30, last: Date.now() - 12 * 60e3 },
+        parked: { time: Date.now() - 95 * 60e3, soc: 72, rangeKm: 415, locked: true, lat: 33.893791, lon: 35.501778, accuracy: 9 } });
       if (l === "where json") return JSON.stringify({ lat: 33.893791, lon: 35.501778, accuracy: 8, ageSec: 40 });
       if (l === "events") return JSON.stringify([
         { t: Date.now() - 3 * 3600e3, text: "⚡ Charging finished at 80%." },
@@ -955,6 +1045,10 @@
       if (l.startsWith("trunk")) { car.trunk = l.includes("open"); return car.trunk ? "✅ Trunk opening" : "✅ Trunk closing"; }
       if (l.startsWith("sentry")) { car.sentry = l.endsWith("on"); return car.sentry ? "✅ Sentry mode on 🛡" : "✅ Sentry mode off"; }
       if (l.startsWith("keyfob")) { car.key = l.endsWith("on"); return "🔑 Phone key " + (car.key ? "ON" : "off"); }
+      if (l === "notify on") { car.notify = true; return "🔔 Notifications on. Subscribe to the topic in the ntfy app."; }
+      if (l === "notify off") { car.notify = false; return "🔕 Notifications off."; }
+      if (l === "notify test") return car.notify ? "✅ Test sent. It should pop up in ntfy." : "Turn notifications on first.";
+      if (l.startsWith("notify wake")) { car.wakeReports = l.endsWith("on"); return car.wakeReports ? "✅ A quiet report on each wake." : "✅ No wake reports (park reports stay on)."; }
       if (l === "flash") return "✅ Flashed the hazard lights for 6 s 💡";
       return "✅ Done: " + line;
     };
@@ -1044,6 +1138,12 @@
     } catch (err) { $("carErrors").textContent = "Couldn't load: " + err.message; logError("diagnostics", err.message); }
     finally { btn.classList.remove("working"); }
   });
+  $("copyTopic").addEventListener("click", async () => {
+    const t = $("ntfyTopic").value;
+    if (!t) { toast("Connect to the car first."); return; }
+    try { await navigator.clipboard.writeText(t); toast("Topic copied. Paste it in the ntfy app."); }
+    catch { $("ntfyTopic").select(); toast("Select the topic and copy it."); }
+  });
   $("clearPhoneErrors").addEventListener("click", () => { store.set("errors", "[]"); renderPhoneErrors(); });
   $("copyDiag").addEventListener("click", async () => {
     const text = `Leo Remote diagnostics\n${$("versions").textContent}\nMode: ${WIFI ? "wifi" : DEMO ? "demo" : "bluetooth"} · ${$("pillText").textContent}\n\n` +
@@ -1070,6 +1170,7 @@
   renderPhoneErrors();
   showTab(store.get("tab", "home"));
   refreshSetup();
+  showOffline(); // last known battery / parked spot until the car answers
 
   (async () => {
     if (!store.get("pin", "")) return;
