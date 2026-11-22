@@ -4,276 +4,562 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b0f14">
+<meta name="color-scheme" content="dark">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Leopard 3">
 <title>Leo Remote</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b0f14'/%3E%3Cpath d='M14 38l5-12c1-3 3-4 6-4h14c3 0 5 1 6 4l5 12v8a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-2H22v2a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2z' fill='%2337d39b'/%3E%3C/svg%3E">
 <style>
   :root {
-    --bg: #0b0f14;
-    --panel: #141a22;
-    --panel-2: #1b232e;
-    --line: #26303d;
-    --text: #e8edf3;
-    --muted: #8b97a6;
-    --accent: #37d39b;
-    --accent-ink: #052b1d;
-    --warn: #ffb547;
-    --danger: #ff6b6b;
-    --cold: #5cc8ff;
-    --hot: #ff8a4c;
-    --radius: 16px;
-  }
-  @media (prefers-color-scheme: light) {
-    :root:not([data-theme="dark"]) {
-      --bg: #f2f4f7; --panel: #ffffff; --panel-2: #eef1f5; --line: #dde2e8;
-      --text: #111821; --muted: #5d6b7a; --accent: #0f9d6b; --accent-ink: #ffffff;
-    }
+    --bg: #0b0f14; --bg2: #11161d; --card: #161c24; --card2: #1c2430; --line: #263040;
+    --text: #eef2f7; --muted: #8b97a8; --dim: #5d6878;
+    --accent: #3ea6ff; --accent2: #6fd0ff; --ok: #34d399; --warn: #fbbf24; --bad: #f87171;
+    --radius: 20px; --tabh: 64px;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; background: var(--bg); color: var(--text); }
-  body {
-    font: 16px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
-    padding: max(12px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
-    max-width: 560px; margin: 0 auto;
-  }
-  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 4px 0 14px; }
-  h1 { font-size: 22px; margin: 0; letter-spacing: -0.02em; }
-  .pill {
-    display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px;
-    background: var(--panel); border: 1px solid var(--line); font-size: 13px; color: var(--muted); white-space: nowrap;
-  }
-  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
-  .pill[data-state="ready"] .dot { background: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 25%, transparent); }
-  .pill[data-state="busy"] .dot { background: var(--warn); animation: pulse 1s infinite; }
-  .pill[data-state="error"] .dot { background: var(--danger); }
-  @keyframes pulse { 50% { opacity: .35; } }
-
-  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; }
-  .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 10px; font-weight: 600; }
-  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-  .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .span-2 { grid-column: span 2; }
-  .span-3 { grid-column: 1 / -1; }
-
-  button {
-    font: inherit; color: var(--text); background: var(--panel-2); border: 1px solid var(--line);
-    border-radius: 12px; min-height: 52px; padding: 10px 8px; font-weight: 600; font-size: 15px;
-    display: flex; align-items: center; justify-content: center; gap: 8px; text-align: center;
-    transition: transform .08s ease, background .15s ease, opacity .15s ease; cursor: pointer;
-  }
-  button:active { transform: scale(.97); }
-  button:disabled { opacity: .45; }
-  button.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
-  button.big { min-height: 64px; font-size: 17px; }
-  button.danger-armed { background: var(--danger); color: #fff; border-color: transparent; }
-  button.cold { color: var(--cold); }
-  button.hot { color: var(--hot); }
-  button.working { position: relative; color: transparent !important; }
-  button.working::after {
-    content: ""; position: absolute; width: 20px; height: 20px; border-radius: 50%;
-    border: 2.5px solid var(--muted); border-top-color: var(--accent); animation: spin .8s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .ico { font-size: 18px; line-height: 1; }
-
-  .status {
-    white-space: pre-wrap; font-size: 14.5px; line-height: 1.55; margin: 0; min-height: 3em;
-    font-family: inherit; color: var(--text);
-  }
-  .status.empty { color: var(--muted); }
-  .row { display: flex; gap: 8px; align-items: center; }
-  .row > * { flex: 1; }
-
-  .stepper { display: grid; grid-template-columns: 52px 1fr 52px; gap: 8px; align-items: center; margin-bottom: 8px; }
-  .stepper output { text-align: center; font-size: 26px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-  .stepper button { font-size: 22px; }
-
-  input {
-    font: inherit; color: var(--text); background: var(--panel-2); border: 1px solid var(--line);
-    border-radius: 12px; min-height: 52px; padding: 0 14px; width: 100%; font-size: 17px;
-  }
-  input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
-  .pin-input { letter-spacing: .35em; font-variant-numeric: tabular-nums; text-align: center; font-size: 22px; }
-
-  .toast {
-    position: fixed; left: 16px; right: 16px; bottom: max(16px, env(safe-area-inset-bottom)); margin: 0 auto; max-width: 528px;
-    background: var(--panel-2); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px;
-    box-shadow: 0 10px 30px rgba(0,0,0,.35); white-space: pre-wrap; font-size: 14.5px;
-    transform: translateY(150%); transition: transform .25s ease; z-index: 10;
-  }
-  .toast.show { transform: none; }
-  .toast.bad { border-color: var(--danger); }
-
-  .muted { color: var(--muted); font-size: 13.5px; }
-  .hint { margin: 10px 0 0; }
-  details summary { cursor: pointer; color: var(--muted); font-size: 14px; padding: 4px 0; }
-  .log { font-size: 12.5px; color: var(--muted); white-space: pre-wrap; max-height: 220px; overflow: auto; margin: 8px 0 0; }
-  .log b { color: var(--text); font-weight: 600; }
+  body { font: 15px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+         padding-bottom: calc(var(--tabh) + env(safe-area-inset-bottom) + 12px); }
+  .wrap { max-width: 520px; margin: 0 auto; padding: calc(env(safe-area-inset-top) + 10px) 16px 0; }
+  svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; }
+  button:disabled { opacity: .45; cursor: default; }
   .hidden { display: none !important; }
-  .warnbox { border-color: var(--warn); }
-  .linkish { background: none; border: none; color: var(--muted); min-height: 0; padding: 4px; font-weight: 500; font-size: 13.5px; text-decoration: underline; }
+
+  /* top bar */
+  .top { display: flex; align-items: center; gap: 10px; padding: 6px 0 12px; }
+  .top h1 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -.3px; }
+  .top .sub { color: var(--muted); font-size: 12.5px; }
+  .top .grow { flex: 1; min-width: 0; }
+  .pill { display: inline-flex; align-items: center; gap: 7px; padding: 6px 11px; border-radius: 99px;
+          background: var(--card); border: 1px solid var(--line); font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+  .pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dim); }
+  .pill[data-state="ready"] .dot { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+  .pill[data-state="busy"] .dot { background: var(--warn); animation: blink 1s infinite; }
+  .pill[data-state="error"] .dot { background: var(--bad); }
+  @keyframes blink { 50% { opacity: .3; } }
+  .iconbtn { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--card); border: 1px solid var(--line); }
+
+  /* cards */
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin-bottom: 14px; }
+  .card h2 { margin: 0 0 12px; font-size: 13px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); font-weight: 600; }
+  .card .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .card .head h2 { margin: 0; }
+  .muted { color: var(--muted); }
+  .small { font-size: 13px; }
+  .link { color: var(--accent); font-size: 13.5px; font-weight: 600; padding: 4px; }
+
+  /* hero */
+  .hero { position: relative; overflow: hidden; padding: 18px 18px 14px;
+          background: radial-gradient(120% 90% at 80% 0%, #1d3146 0%, #141b24 55%, #121820 100%); }
+  .hero .soc { font-size: 52px; font-weight: 750; letter-spacing: -2px; line-height: 1; }
+  .hero .soc small { font-size: 22px; font-weight: 600; letter-spacing: 0; color: var(--muted); margin-left: 2px; }
+  .hero .range { color: var(--muted); margin-top: 4px; font-size: 15px; }
+  .hero .range b { color: var(--text); font-weight: 600; }
+  .bar { height: 8px; border-radius: 8px; background: #0c1118; margin: 12px 0 4px; overflow: hidden; border: 1px solid #222c3a; }
+  .bar > i { display: block; height: 100%; width: 0; border-radius: 8px; background: linear-gradient(90deg, var(--ok), #7ef0c1); transition: width .6s; }
+  .bar.low > i { background: linear-gradient(90deg, var(--bad), #fda4a4); }
+  .bar.mid > i { background: linear-gradient(90deg, var(--warn), #fde68a); }
+  .carpic { display: block; width: 100%; height: auto; margin: 6px 0 2px; }
+  .carpic .body { fill: url(#paint); }
+  .carpic .glass { fill: #0d1a26; stroke: #2b4258; stroke-width: 1.5; }
+  .carpic .lamp { fill: #3a4656; transition: fill .4s, filter .4s; }
+  .carpic.on .lamp.front { fill: #e6f6ff; filter: drop-shadow(0 0 6px #9fdcff); }
+  .carpic.on .lamp.rear { fill: #ff5a5a; filter: drop-shadow(0 0 5px #ff6b6b); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 99px; font-size: 12.5px;
+          background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08); color: var(--text); }
+  .chip svg.i { width: 15px; height: 15px; }
+  .chip.ok { color: var(--ok); } .chip.warn { color: var(--warn); } .chip.bad { color: var(--bad); } .chip.blue { color: var(--accent2); }
+  .updated { position: absolute; top: 18px; right: 18px; color: var(--dim); font-size: 12px; }
+
+  /* action buttons */
+  .actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+  .act { display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 14px 4px 11px; border-radius: 18px;
+         background: var(--card); border: 1px solid var(--line); font-size: 12.5px; font-weight: 600; color: var(--text); transition: transform .08s, background .2s; }
+  .act .ring { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; background: var(--card2); color: var(--accent2); }
+  .act:active { transform: scale(.96); }
+  .act.danger .ring { color: var(--bad); }
+  .act.armed { background: #3a1d22; border-color: #7a2d36; }
+  .act.armed .ring { background: var(--bad); color: #fff; }
+  .working { position: relative; pointer-events: none; }
+  .working::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(90deg, transparent, rgba(255,255,255,.08), transparent); animation: sweep 1s infinite; }
+  @keyframes sweep { from { transform: translateX(-60%); } to { transform: translateX(60%); } }
+
+  /* generic button grid */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .btn { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 50px; padding: 10px 12px; border-radius: 14px;
+         background: var(--card2); border: 1px solid var(--line); font-weight: 600; font-size: 14.5px; transition: transform .08s; text-align: center; }
+  .btn:active { transform: scale(.97); }
+  .btn.primary { background: linear-gradient(180deg, #3ea6ff, #1f7fe0); border-color: #3a9cf5; color: #fff; }
+  .btn.danger { color: var(--bad); }
+  .btn.armed { background: var(--bad); color: #fff; border-color: var(--bad); }
+  .btn.wide { grid-column: 1 / -1; }
+  .btn svg.i { width: 19px; height: 19px; }
+  .sect { margin: 14px 0 8px; font-size: 13px; color: var(--muted); font-weight: 600; }
+  .sect:first-of-type { margin-top: 0; }
+
+  /* tiles */
+  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .tile { background: var(--card2); border: 1px solid var(--line); border-radius: 16px; padding: 12px; min-height: 76px; }
+  .tile .k { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12.5px; }
+  .tile .k svg.i { width: 16px; height: 16px; }
+  .tile .v { margin-top: 6px; font-weight: 650; font-size: 15.5px; }
+  .tile .v.bad { color: var(--bad); } .tile .v.ok { color: var(--ok); }
+
+  /* climate dial */
+  .dial { display: flex; align-items: center; justify-content: center; gap: 22px; padding: 6px 0 14px; }
+  .dial .ring { width: 170px; height: 170px; border-radius: 50%; display: grid; place-items: center; text-align: center;
+                background: radial-gradient(circle at 50% 45%, #1e2a38, #121921 70%); border: 1px solid var(--line);
+                box-shadow: inset 0 0 0 9px #0f151d, 0 0 0 2px #1f2a37; position: relative; }
+  .dial .ring.on { box-shadow: inset 0 0 0 9px #0f151d, 0 0 0 2px var(--accent), 0 0 30px rgba(62,166,255,.25); }
+  .dial .temp { font-size: 48px; font-weight: 700; letter-spacing: -1.5px; }
+  .dial .temp small { font-size: 20px; color: var(--muted); }
+  .dial .lbl { color: var(--muted); font-size: 12.5px; margin-top: -4px; }
+  .dial .step { width: 54px; height: 54px; border-radius: 50%; background: var(--card2); border: 1px solid var(--line); font-size: 28px; font-weight: 400; }
+  .temps { display: flex; justify-content: center; gap: 18px; color: var(--muted); font-size: 13.5px; margin-bottom: 14px; }
+  .temps b { color: var(--text); font-weight: 600; }
+  .seg { display: flex; gap: 6px; align-items: center; }
+  .seg .name { flex: 1; font-weight: 600; font-size: 14.5px; }
+  .seg button { width: 44px; height: 40px; border-radius: 11px; background: var(--card2); border: 1px solid var(--line); font-weight: 650; }
+  .seg button.sel { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .seglist { display: grid; gap: 10px; }
+
+  /* location */
+  .map { width: 100%; height: 230px; border: 0; border-radius: 14px; background: var(--card2); display: block; }
+  .coords { font-variant-numeric: tabular-nums; margin: 10px 0 12px; }
+
+  /* lists */
+  .feed { display: grid; gap: 0; }
+  .feed .row { display: flex; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); font-size: 14px; }
+  .feed .row:first-child { border-top: 0; padding-top: 2px; }
+  .feed .t { color: var(--dim); font-size: 12px; white-space: nowrap; min-width: 54px; }
+  .empty { color: var(--dim); font-size: 13.5px; }
+  pre.log { margin: 0; white-space: pre-wrap; word-break: break-word; font: 12px/1.45 ui-monospace, Menlo, Consolas, monospace;
+            color: #b7c2d0; background: #0d1218; border: 1px solid var(--line); border-radius: 12px; padding: 10px; max-height: 260px; overflow: auto; }
+  .steps { margin: 0; padding-left: 20px; color: #c9d2de; }
+  .steps li { margin: 6px 0; }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; font-size: 14px; }
+  .kv dt { color: var(--muted); } .kv dd { margin: 0; word-break: break-all; }
+
+  input { font: inherit; color: var(--text); background: #0d1218; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; width: 100%; min-width: 0; outline: none; }
+  input:focus { border-color: var(--accent); }
+  .row2 { display: flex; gap: 8px; }
+  .row2 .btn { flex: 0 0 auto; }
+
+  /* setup */
+  .setup { text-align: center; padding: 26px 18px; }
+  .setup .pin { font-size: 26px; letter-spacing: 8px; text-align: center; margin: 14px 0 10px; }
+  .setup .big { width: 100%; }
+
+  /* tab bar */
+  nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: rgba(13,18,24,.92); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+             border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); }
+  nav.tabs .in { max-width: 520px; margin: 0 auto; display: grid; grid-template-columns: repeat(5, 1fr); height: var(--tabh); }
+  nav.tabs button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 11px; color: var(--dim); font-weight: 600; }
+  nav.tabs button.sel { color: var(--accent2); }
+
+  .toast { position: fixed; left: 50%; bottom: calc(var(--tabh) + env(safe-area-inset-bottom) + 14px); transform: translate(-50%, 20px);
+           max-width: min(92vw, 480px); background: #222c38; border: 1px solid #33404f; color: var(--text); padding: 11px 15px; border-radius: 14px;
+           font-size: 14px; opacity: 0; pointer-events: none; transition: .25s; z-index: 30; white-space: pre-line; box-shadow: 0 10px 30px rgba(0,0,0,.4); }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+  .toast.bad { border-color: #7a2d36; background: #2a1a1e; }
+  .banner { display: flex; gap: 10px; align-items: flex-start; background: #1f1a10; border: 1px solid #5a4a1c; color: #f5deb0; border-radius: 16px; padding: 12px 14px; margin-bottom: 14px; font-size: 13.5px; }
+  .banner svg.i { color: var(--warn); }
 </style>
 </head>
 <body>
-<header>
-  <h1>Leo Remote</h1>
-  <span class="pill" id="pill" data-state="idle"><span class="dot"></span><span id="pillText">Not connected</span></span>
-</header>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+  <symbol id="i-unlock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.6-1.8"/></symbol>
+  <symbol id="i-power" viewBox="0 0 24 24"><path d="M12 3v8"/><path d="M6.3 6.6a8 8 0 1 0 11.4 0"/></symbol>
+  <symbol id="i-hazard" viewBox="0 0 24 24"><path d="M12 4l9 16H3z"/><path d="M12 10v4"/><path d="M12 17v.5"/></symbol>
+  <symbol id="i-snow" viewBox="0 0 24 24"><path d="M12 2v20M3.3 7l17.4 10M20.7 7L3.3 17"/><path d="M9 4l3 2 3-2M9 20l3-2 3 2"/></symbol>
+  <symbol id="i-fire" viewBox="0 0 24 24"><path d="M12 22c4 0 7-3 7-7 0-4-3-6-4-10-2 2-3 4-3 6-1-1-2-2-2-4-3 3-5 5.5-5 8 0 4 3 7 7 7z"/></symbol>
+  <symbol id="i-wind" viewBox="0 0 24 24"><path d="M3 8h11a3 3 0 1 0-3-3M3 12h16a3 3 0 1 1-3 3M3 16h8"/></symbol>
+  <symbol id="i-temp" viewBox="0 0 24 24"><path d="M14 14.8V5a2 2 0 0 0-4 0v9.8a4 4 0 1 0 4 0z"/></symbol>
+  <symbol id="i-car" viewBox="0 0 24 24"><path d="M3 16v-3l2-5.5A2 2 0 0 1 6.9 6h10.2a2 2 0 0 1 1.9 1.5L21 13v3a1 1 0 0 1-1 1h-1M5 17H4a1 1 0 0 1-1-1"/><path d="M3 13h18"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M9 17h6"/></symbol>
+  <symbol id="i-door" viewBox="0 0 24 24"><path d="M5 21V8l6-5h8v18z"/><path d="M5 11h14"/><path d="M15 14h2"/></symbol>
+  <symbol id="i-window" viewBox="0 0 24 24"><path d="M4 20V9l6-6h10v17z"/><path d="M12 12v5M9.5 14.5L12 12l2.5 2.5"/></symbol>
+  <symbol id="i-trunk" viewBox="0 0 24 24"><path d="M3 14h18v5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M5 14l3-8h8l3 8"/></symbol>
+  <symbol id="i-roof" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><rect x="7" y="8" width="10" height="5" rx="1"/></symbol>
+  <symbol id="i-light" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-7-6.4-7-12a7 7 0 0 1 14 0c0 5.6-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M14.5 8.5l2 2"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></symbol>
+  <symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 2v5M15 2v5M6 7h12v4a6 6 0 0 1-12 0zM12 17v5"/></symbol>
+  <symbol id="i-tire" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/></symbol>
+  <symbol id="i-battery" viewBox="0 0 24 24"><rect x="3" y="7" width="16" height="10" rx="2"/><path d="M21 10v4"/></symbol>
+  <symbol id="i-road" viewBox="0 0 24 24"><path d="M5 21L9 3M19 21L15 3M12 5v2M12 11v2M12 17v2"/></symbol>
+  <symbol id="i-defrost" viewBox="0 0 24 24"><path d="M4 9c1.6-1.6 3.2 1.6 4.8 0s3.2 1.6 4.8 0 3.2 1.6 4.8 0M4 14c1.6-1.6 3.2 1.6 4.8 0s3.2 1.6 4.8 0 3.2 1.6 4.8 0M8 19h8"/></symbol>
+  <symbol id="i-wheel" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2"/><path d="M12 14v7M10 11.5L3.5 9.5M14 11.5l6.5-2"/></symbol>
+  <symbol id="i-mirror" viewBox="0 0 24 24"><path d="M3 9h11l4 4v3H3z"/><path d="M18 13h3"/></symbol>
+  <symbol id="i-wifi" viewBox="0 0 24 24"><path d="M2 9a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0"/><path d="M12 19.5h.01"/></symbol>
+  <symbol id="i-bt" viewBox="0 0 24 24"><path d="M7 7l10 10-5 4V3l5 4L7 17"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.5"/></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></symbol>
+</svg>
 
-<section class="card warnbox hidden" id="noBt">
-  <h2>Bluetooth not available</h2>
-  <p class="muted" style="margin:0">Safari can't use Bluetooth. Use <b>Wi-Fi</b> below, or open this page in the free
-  <b>Bluefy</b> browser from the App Store. On Android, use Chrome.</p>
-</section>
+<div class="wrap">
+  <header class="top">
+    <div class="grow">
+      <h1 id="carName">Leopard 3</h1>
+      <div class="sub" id="subline">Leo Remote</div>
+    </div>
+    <span class="pill" id="pill" data-state="idle"><span class="dot"></span><span id="pillText">Not connected</span></span>
+    <button class="iconbtn" id="refreshBtn" aria-label="Refresh"><svg class="i"><use href="#i-refresh"/></svg></button>
+  </header>
 
-<section class="card hidden" id="wifiCard">
-  <h2>Over Wi-Fi</h2>
-  <p class="muted" style="margin:0 0 10px">When your phone and the car are on the same Wi-Fi (home Wi-Fi, or the car on
-  your hotspot), type the car's address from the Leo Remote app (e.g. <b>192.168.1.57</b>). Works in plain Safari.</p>
-  <div class="row">
-    <input id="carIp" inputmode="decimal" autocomplete="off" autocapitalize="off" placeholder="192.168.1.57" maxlength="21">
-    <button class="primary" id="openWifi" style="flex:0 0 auto">Open</button>
-  </div>
-</section>
+  <!-- first run: PIN -->
+  <section class="card setup hidden" id="setup">
+    <svg class="i" style="width:44px;height:44px;color:var(--accent2)"><use href="#i-key"/></svg>
+    <h2 style="margin:10px 0 4px;font-size:18px;text-transform:none;letter-spacing:0;color:var(--text)">Enter your car's PIN</h2>
+    <p class="muted small" style="margin:0">It's shown in the Leo Remote app on the car screen. It's saved on this phone only.</p>
+    <input id="pinInput" class="pin" inputmode="numeric" autocomplete="off" maxlength="12" placeholder="••••••">
+    <button class="btn primary big" id="savePin">Save and connect</button>
+  </section>
 
-<section class="card hidden" id="setup">
-  <h2>First time</h2>
-  <p class="muted" style="margin:0 0 10px">Enter the PIN shown in the Leo Remote app on the car screen.
-  It's saved on this phone only.</p>
-  <div class="row">
-    <input id="pinInput" class="pin-input" inputmode="numeric" autocomplete="off" maxlength="12" placeholder="••••••">
-    <button class="primary" id="savePin" style="flex:0 0 96px">Save</button>
-  </div>
-</section>
+  <!-- connect (Bluetooth needs one tap the first time) -->
+  <section class="card hidden" id="connectCard">
+    <button class="btn primary" id="connectBtn" style="width:100%;min-height:56px"><svg class="i"><use href="#i-bt"/></svg><span id="connectLabel">Connect to the car</span></button>
+    <p class="muted small" id="connectHint" style="margin:10px 2px 0">Stand near the car. It must be awake (on, or sentry mode on).</p>
+  </section>
 
-<section class="card" id="connectCard">
-  <button class="primary big" id="connectBtn" style="width:100%"><span class="ico">🚗</span><span id="connectLabel">Connect to the car</span></button>
-  <p class="muted hint" id="connectHint">Stand near the car. It must be awake (on, or sentry mode on).</p>
-</section>
+  <div class="banner hidden" id="noBt"><svg class="i"><use href="#i-alert"/></svg>
+    <div>Safari can't use Bluetooth. Use the <b>Wi-Fi / anywhere</b> address under More, or open this page in the free <b>Bluefy</b> app.</div></div>
 
-<section class="card">
-  <div class="row" style="margin-bottom:8px">
-    <h2 style="margin:0">Car</h2>
-    <button class="linkish" data-cmd="status" style="flex:0 0 auto">Refresh</button>
-  </div>
-  <pre class="status empty" id="status">Connect to see the battery, locks, doors and climate.</pre>
-</section>
+  <!-- ============================== HOME -->
+  <main id="tab-home" class="tab">
+    <section class="card hero">
+      <div class="updated" id="updated"></div>
+      <div class="soc" id="soc">––<small>%</small></div>
+      <div class="range" id="range">Connect to see your car</div>
+      <div class="bar" id="socBar"><i></i></div>
+      <svg class="carpic" id="carPic" viewBox="0 0 340 140" aria-hidden="true">
+        <defs>
+          <linearGradient id="paint" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#c9d3df"/><stop offset=".55" stop-color="#8d9aab"/><stop offset="1" stop-color="#5b6777"/>
+          </linearGradient>
+        </defs>
+        <ellipse cx="172" cy="127" rx="150" ry="7" fill="rgba(0,0,0,.45)"/>
+        <path class="body" d="M18 101V74q0-11 11-13l46-5 26-31q5-6 13-6h132q9 0 14 7l23 29 25 5q12 3 12 15v26q0 7-7 7h-24a31 31 0 0 0-61 0H117a31 31 0 0 0-61 0H25q-7 0-7-7z"/>
+        <path class="glass" d="M108 31L84 57h82V31z"/>
+        <path class="glass" d="M174 31v26h102l-19-23q-2-3-6-3z"/>
+        <path d="M170 31v72" stroke="#5a6676" stroke-width="1.5"/>
+        <path d="M84 62h197" stroke="#e8eef5" stroke-opacity=".35" stroke-width="2"/>
+        <rect x="140" y="66" width="16" height="3.5" rx="1.75" fill="#3b4655"/>
+        <rect x="236" y="66" width="16" height="3.5" rx="1.75" fill="#3b4655"/>
+        <rect class="lamp front" x="306" y="68" width="16" height="8" rx="3"/>
+        <rect class="lamp rear" x="18" y="68" width="8" height="12" rx="2"/>
+        <g><circle cx="86" cy="106" r="24" fill="#151a21"/><circle cx="86" cy="106" r="13" fill="#3a4452" stroke="#6b7685" stroke-width="2"/><circle cx="86" cy="106" r="3" fill="#9aa5b3"/></g>
+        <g><circle cx="262" cy="106" r="24" fill="#151a21"/><circle cx="262" cy="106" r="13" fill="#3a4452" stroke="#6b7685" stroke-width="2"/><circle cx="262" cy="106" r="3" fill="#9aa5b3"/></g>
+      </svg>
+      <div class="chips" id="chips"><span class="chip">Not connected</span></div>
+    </section>
 
-<section class="card">
-  <h2>Doors</h2>
-  <div class="grid">
-    <button class="big" data-cmd="lock"><span class="ico">🔒</span>Lock</button>
-    <button class="big" data-cmd="unlock" data-confirm="Tap again to unlock"><span class="ico">🔓</span>Unlock</button>
-    <button data-cmd="unlock driver" data-confirm="Tap again: driver door"><span class="ico">🚪</span>Driver door</button>
-    <button data-cmd="trunk open" data-confirm="Tap again to open trunk"><span class="ico">🧳</span>Open trunk</button>
-    <button data-cmd="mirrors fold"><span class="ico">🪞</span>Fold mirrors</button>
-    <button data-cmd="mirrors unfold">Unfold mirrors</button>
-  </div>
-</section>
+    <div class="actions">
+      <button class="act" data-cmd="lock"><span class="ring"><svg class="i"><use href="#i-lock"/></svg></span>Lock</button>
+      <button class="act" data-cmd="unlock" data-confirm="Tap again"><span class="ring"><svg class="i"><use href="#i-unlock"/></svg></span>Unlock</button>
+      <button class="act danger" data-cmd="off" data-confirm="Tap again"><span class="ring"><svg class="i"><use href="#i-power"/></svg></span>Off &amp; lock</button>
+      <button class="act" data-cmd="flash"><span class="ring"><svg class="i"><use href="#i-hazard"/></svg></span>Flash</button>
+    </div>
 
-<section class="card">
-  <h2>Climate</h2>
-  <div class="stepper">
-    <button id="tempDown" aria-label="Colder">−</button>
-    <output id="tempOut">22°C</output>
-    <button id="tempUp" aria-label="Warmer">+</button>
-  </div>
-  <div class="grid">
-    <button class="big primary" id="acOn"><span class="ico">❄️</span>A/C on</button>
-    <button class="big" data-cmd="ac off">A/C off</button>
-    <button class="hot" data-cmd="warmup"><span class="ico">🔥</span>Warm up</button>
-    <button class="cold" data-cmd="cooldown"><span class="ico">🧊</span>Cool down</button>
-    <button data-cmd="ac auto">A/C auto</button>
-    <button data-cmd="ac max">A/C max</button>
-  </div>
-  <div class="grid three" style="margin-top:8px">
-    <button data-cmd="defrost front">Defrost front</button>
-    <button data-cmd="defrost rear">Defrost rear</button>
-    <button data-cmd="defrost off">Defrost off</button>
-    <button data-cmd="wheel on">Wheel heat</button>
-    <button data-cmd="seatheat 2">Seat heat</button>
-    <button data-cmd="seatvent 2">Seat fan</button>
-    <button data-cmd="wheel off">Wheel off</button>
-    <button data-cmd="seatheat off">Heat off</button>
-    <button data-cmd="seatvent off">Fan off</button>
-  </div>
-</section>
+    <section class="card">
+      <div class="head"><h2>Climate</h2><button class="link" data-goto="climate">More</button></div>
+      <div class="temps" style="justify-content:flex-start;margin-bottom:12px"><span>Inside <b id="inT">–</b></span><span>Outside <b id="outT">–</b></span><span>A/C <b id="acState">–</b></span></div>
+      <div class="grid2">
+        <button class="btn primary" id="homeAcOn"><svg class="i"><use href="#i-snow"/></svg>A/C <span class="tempTxt">22°</span></button>
+        <button class="btn" data-cmd="ac off">A/C off</button>
+        <button class="btn" data-cmd="warmup"><svg class="i" style="color:#ff9b5a"><use href="#i-fire"/></svg>Warm up</button>
+        <button class="btn" data-cmd="cooldown"><svg class="i" style="color:var(--accent2)"><use href="#i-wind"/></svg>Cool down</button>
+      </div>
+    </section>
 
-<section class="card">
-  <h2>Windows &amp; roof</h2>
-  <div class="grid three">
-    <button data-cmd="windows close"><span class="ico">⬆️</span>Close</button>
-    <button data-cmd="windows vent">Vent</button>
-    <button data-cmd="windows open" data-confirm="Tap again to open">⬇️ Open</button>
-    <button data-cmd="sunroof close">Roof close</button>
-    <button data-cmd="sunroof tilt">Roof tilt</button>
-    <button data-cmd="sunroof stop">Roof stop</button>
-  </div>
-</section>
+    <section class="card">
+      <h2>Vehicle</h2>
+      <div class="tiles">
+        <div class="tile"><div class="k"><svg class="i"><use href="#i-door"/></svg>Doors</div><div class="v" id="tDoors">–</div></div>
+        <div class="tile"><div class="k"><svg class="i"><use href="#i-window"/></svg>Windows</div><div class="v" id="tWindows">–</div></div>
+        <div class="tile"><div class="k"><svg class="i"><use href="#i-trunk"/></svg>Trunk</div><div class="v" id="tTrunk">–</div></div>
+        <div class="tile"><div class="k"><svg class="i"><use href="#i-roof"/></svg>Sunroof</div><div class="v" id="tRoof">–</div></div>
+        <div class="tile"><div class="k"><svg class="i"><use href="#i-tire"/></svg>Tires (bar)</div><div class="v" id="tTires">–</div></div>
+        <div class="tile"><div class="k"><svg class="i"><use href="#i-battery"/></svg>12 V battery</div><div class="v" id="t12">–</div></div>
+        <div class="tile"><div class="k"><svg class="i"><use href="#i-road"/></svg>Odometer</div><div class="v" id="tOdo">–</div></div>
+        <div class="tile"><div class="k"><svg class="i"><use href="#i-car"/></svg>Gear</div><div class="v" id="tGear">–</div></div>
+      </div>
+    </section>
 
-<section class="card">
-  <h2>More</h2>
-  <div class="grid">
-    <button data-cmd="flash"><span class="ico">💡</span>Flash lights</button>
-    <button data-cmd="where"><span class="ico">📍</span>Where</button>
-    <button data-cmd="sentry on"><span class="ico">🛡</span>Sentry on</button>
-    <button data-cmd="sentry off">Sentry off</button>
-    <button data-cmd="keyfob on"><span class="ico">🔑</span>Phone key on</button>
-    <button data-cmd="keyfob off">Phone key off</button>
-  </div>
-  <form id="typeForm" class="row" style="margin-top:8px">
-    <input id="typeInput" placeholder="Type a command, e.g. temp 21" autocomplete="off" autocapitalize="off" enterkeyhint="send">
-    <button type="submit" style="flex:0 0 80px">Send</button>
-  </form>
-</section>
+    <section class="card">
+      <div class="head"><h2>Activity</h2><button class="link" id="eventsRefresh">Refresh</button></div>
+      <div class="feed" id="feed"><div class="empty">Alerts from the car show up here: charging done, doors opened while parked, low 12 V, phone key, schedules.</div></div>
+    </section>
+  </main>
 
-<section class="card">
-  <details>
-    <summary>Messages from the car</summary>
-    <div class="log" id="log"></div>
-  </details>
-  <div class="row" style="margin-top:6px">
-    <button class="linkish" id="changePin" style="flex:0 0 auto">Change PIN</button>
-    <button class="linkish" id="disconnectBtn" style="flex:0 0 auto">Disconnect</button>
-  </div>
-</section>
+  <!-- ============================== CLIMATE -->
+  <main id="tab-climate" class="tab hidden">
+    <section class="card">
+      <div class="dial">
+        <button class="step" id="tempDown" aria-label="Colder">−</button>
+        <div class="ring" id="dialRing"><div><div class="temp"><span id="tempOut">22</span><small>°C</small></div><div class="lbl" id="dialLbl">A/C off</div></div></div>
+        <button class="step" id="tempUp" aria-label="Warmer">+</button>
+      </div>
+      <div class="temps"><span>Inside <b id="inT2">–</b></span><span>Outside <b id="outT2">–</b></span></div>
+      <div class="grid2">
+        <button class="btn primary" id="acOn"><svg class="i"><use href="#i-snow"/></svg>A/C on</button>
+        <button class="btn" data-cmd="ac off"><svg class="i"><use href="#i-power"/></svg>A/C off</button>
+        <button class="btn" data-cmd="ac auto">Auto</button>
+        <button class="btn" data-cmd="ac max"><svg class="i"><use href="#i-wind"/></svg>Max cool</button>
+      </div>
+    </section>
+    <section class="card">
+      <h2>Presets</h2>
+      <div class="grid2">
+        <button class="btn" data-cmd="warmup"><svg class="i" style="color:#ff9b5a"><use href="#i-fire"/></svg>Warm up</button>
+        <button class="btn" data-cmd="cooldown"><svg class="i" style="color:var(--accent2)"><use href="#i-wind"/></svg>Cool down</button>
+      </div>
+      <p class="muted small" style="margin:10px 2px 0">Warm up: A/C 26 °C, both defrosters, driver seat and wheel heating. Cool down: max A/C and the driver seat fan.</p>
+    </section>
+    <section class="card">
+      <h2>Defrost</h2>
+      <div class="grid3">
+        <button class="btn" data-cmd="defrost front on"><svg class="i"><use href="#i-defrost"/></svg>Front</button>
+        <button class="btn" data-cmd="defrost rear on"><svg class="i"><use href="#i-defrost"/></svg>Rear</button>
+        <button class="btn" data-cmd="defrost off">Off</button>
+      </div>
+    </section>
+    <section class="card">
+      <h2>Seats &amp; wheel</h2>
+      <div class="seglist">
+        <div class="seg" data-seg="seatheat"><span class="name">Driver heat</span><button>0</button><button>1</button><button>2</button><button>3</button></div>
+        <div class="seg" data-seg="seatheat passenger"><span class="name">Passenger heat</span><button>0</button><button>1</button><button>2</button><button>3</button></div>
+        <div class="seg" data-seg="seatvent"><span class="name">Driver fan</span><button>0</button><button>1</button><button>2</button><button>3</button></div>
+        <div class="seg" data-seg="seatvent passenger"><span class="name">Passenger fan</span><button>0</button><button>1</button><button>2</button><button>3</button></div>
+      </div>
+      <div class="grid2" style="margin-top:12px">
+        <button class="btn" data-cmd="wheel on"><svg class="i"><use href="#i-wheel"/></svg>Wheel heat on</button>
+        <button class="btn" data-cmd="wheel off">Wheel heat off</button>
+      </div>
+    </section>
+  </main>
 
+  <!-- ============================== CONTROLS -->
+  <main id="tab-controls" class="tab hidden">
+    <section class="card">
+      <h2>Doors</h2>
+      <div class="grid3">
+        <button class="btn" data-cmd="lock"><svg class="i"><use href="#i-lock"/></svg>Lock</button>
+        <button class="btn" data-cmd="unlock" data-confirm="Tap again"><svg class="i"><use href="#i-unlock"/></svg>Unlock</button>
+        <button class="btn" data-cmd="unlock driver" data-confirm="Tap again"><svg class="i"><use href="#i-door"/></svg>Driver</button>
+      </div>
+    </section>
+    <section class="card">
+      <h2>Windows</h2>
+      <div class="grid4">
+        <button class="btn" data-cmd="windows close">Close</button>
+        <button class="btn" data-cmd="windows vent">Vent</button>
+        <button class="btn" data-cmd="windows half" data-confirm="Again">Half</button>
+        <button class="btn" data-cmd="windows open" data-confirm="Again">Open</button>
+      </div>
+      <div class="sect">Sunroof</div>
+      <div class="grid4">
+        <button class="btn" data-cmd="sunroof close">Close</button>
+        <button class="btn" data-cmd="sunroof tilt">Tilt</button>
+        <button class="btn" data-cmd="sunroof open" data-confirm="Again">Open</button>
+        <button class="btn" data-cmd="sunroof stop">Stop</button>
+      </div>
+    </section>
+    <section class="card">
+      <h2>Trunks</h2>
+      <div class="grid2">
+        <button class="btn" data-cmd="trunk open" data-confirm="Tap again"><svg class="i"><use href="#i-trunk"/></svg>Open trunk</button>
+        <button class="btn" data-cmd="trunk close">Close trunk</button>
+        <button class="btn" data-cmd="frunk open" data-confirm="Tap again">Open front trunk</button>
+        <button class="btn" data-cmd="frunk close">Close front trunk</button>
+      </div>
+    </section>
+    <section class="card">
+      <h2>Mirrors &amp; lights</h2>
+      <div class="grid2">
+        <button class="btn" data-cmd="mirrors fold"><svg class="i"><use href="#i-mirror"/></svg>Fold mirrors</button>
+        <button class="btn" data-cmd="mirrors unfold">Unfold mirrors</button>
+        <button class="btn" data-cmd="light on"><svg class="i"><use href="#i-light"/></svg>Cabin light on</button>
+        <button class="btn" data-cmd="light off">Cabin light off</button>
+        <button class="btn wide" data-cmd="flash"><svg class="i"><use href="#i-hazard"/></svg>Flash hazard lights</button>
+      </div>
+    </section>
+    <section class="card">
+      <h2>Power &amp; security</h2>
+      <div class="grid2">
+        <button class="btn danger wide" data-cmd="off" data-confirm="Tap again to switch off and lock"><svg class="i"><use href="#i-power"/></svg>Switch off &amp; lock</button>
+        <button class="btn" data-cmd="sentry on"><svg class="i"><use href="#i-shield"/></svg>Sentry on</button>
+        <button class="btn" data-cmd="sentry off">Sentry off</button>
+      </div>
+      <p class="muted small" style="margin:10px 2px 0">Switch off only works with the car in P and stopped. It turns off the A/C and lights, switches the car off, then locks.</p>
+    </section>
+  </main>
+
+  <!-- ============================== LOCATION -->
+  <main id="tab-location" class="tab hidden">
+    <section class="card">
+      <div class="head"><h2>Where's my car</h2><button class="link" id="locRefresh">Update</button></div>
+      <iframe class="map hidden" id="map" title="Car location" loading="lazy" referrerpolicy="no-referrer"></iframe>
+      <div class="empty" id="locEmpty">Tap Update to get the car's GPS position.</div>
+      <div class="coords hidden" id="coords"></div>
+      <div class="grid2 hidden" id="locBtns">
+        <a class="btn primary" id="gmaps" target="_blank" rel="noopener noreferrer" style="text-decoration:none"><svg class="i"><use href="#i-map"/></svg>Open in Google Maps</a>
+        <a class="btn" id="amaps" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit">Apple Maps</a>
+        <button class="btn wide" data-cmd="flash"><svg class="i"><use href="#i-hazard"/></svg>Flash lights to find it</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============================== MORE -->
+  <main id="tab-more" class="tab hidden">
+    <section class="card">
+      <div class="head"><h2>Phone key</h2><span class="chip" id="keyChip">–</span></div>
+      <div class="kv" style="margin-bottom:12px"><dt>Phone</dt><dd id="keyPhone">–</dd><dt>Right now</dt><dd id="keyState">–</dd><dt>Does</dt><dd id="keyModes">–</dd></div>
+      <div class="grid2">
+        <button class="btn" data-cmd="keyfob on"><svg class="i"><use href="#i-key"/></svg>Key on</button>
+        <button class="btn" data-cmd="keyfob off">Key off</button>
+      </div>
+      <div class="sect">How to use it</div>
+      <ol class="steps small">
+        <li>There's nothing to press. Leave your phone in your pocket with Bluetooth on.</li>
+        <li>Walk up to the car. When your iPhone's Bluetooth connects to the car (the same link it uses for calls and music), the car unlocks.</li>
+        <li>If you don't open a door within 45 seconds, it locks again by itself.</li>
+        <li>With "lock when I leave" on (set on the car screen), it locks once your phone has been gone about 20 seconds.</li>
+        <li>It only works while the car is awake, so turn <b>sentry on</b> when you park.</li>
+      </ol>
+    </section>
+
+    <section class="card">
+      <h2>Connection</h2>
+      <div class="kv" style="margin-bottom:12px"><dt>Now</dt><dd id="connNow">Not connected</dd><dt>Wi-Fi</dt><dd id="connWifi">–</dd><dt>Anywhere</dt><dd id="connTs">–</dd></div>
+      <div id="openRemote">
+        <div class="sect" style="margin-top:0">Open the remote over Wi-Fi or the internet</div>
+        <div class="row2">
+          <input id="carIp" inputmode="decimal" autocomplete="off" autocapitalize="off" placeholder="192.168.1.57 or 100.x.x.x" maxlength="21">
+          <button class="btn primary" id="openWifi">Open</button>
+        </div>
+        <p class="muted small" style="margin:8px 2px 0">Same Wi-Fi: the car's Wi-Fi address. From anywhere: its Tailscale address (100.x.x.x), with Tailscale on in your phone. Both are on the car screen.</p>
+      </div>
+      <label class="seg" style="margin-top:12px" id="autoRow"><span class="name small">Reconnect Bluetooth by itself</span><input type="checkbox" id="autoBt" style="width:22px;height:22px"></label>
+      <div class="grid2" style="margin-top:12px">
+        <button class="btn" id="changePin">Change PIN</button>
+        <button class="btn" id="disconnectBtn">Disconnect</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Command</h2>
+      <form id="typeForm" class="row2">
+        <input id="typeInput" placeholder="e.g. temp 21, seatheat 2, help" autocomplete="off" autocapitalize="off" enterkeyhint="send">
+        <button class="btn" type="submit">Send</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <div class="head"><h2>Diagnostics</h2><button class="link" id="copyDiag">Copy</button></div>
+      <div class="sect" style="margin-top:0">Errors on the car</div>
+      <pre class="log" id="carErrors">Tap "Load car errors".</pre>
+      <div class="grid2" style="margin:10px 0 4px"><button class="btn" id="loadCarErrors">Load car errors</button><button class="btn" id="clearPhoneErrors">Clear phone log</button></div>
+      <div class="sect">Errors on this phone</div>
+      <pre class="log" id="phoneErrors"></pre>
+      <div class="sect">Messages</div>
+      <pre class="log" id="msgLog"></pre>
+      <p class="muted small" style="margin:10px 2px 0" id="versions"></p>
+      <button class="btn" data-cmd="update" data-confirm="Tap again to update" style="width:100%;margin-top:6px"><svg class="i"><use href="#i-refresh"/></svg>Update the car app</button>
+      <p class="muted small" style="margin:8px 2px 0">The car also checks for updates every 6 hours and installs them while parked.</p>
+    </section>
+  </main>
+</div>
+
+<nav class="tabs"><div class="in">
+  <button data-tab="home" class="sel"><svg class="i"><use href="#i-home"/></svg>Home</button>
+  <button data-tab="climate"><svg class="i"><use href="#i-temp"/></svg>Climate</button>
+  <button data-tab="controls"><svg class="i"><use href="#i-car"/></svg>Controls</button>
+  <button data-tab="location"><svg class="i"><use href="#i-pin"/></svg>Location</button>
+  <button data-tab="more"><svg class="i"><use href="#i-more"/></svg>More</button>
+</div></nav>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
 (() => {
   "use strict";
-
-  // Nordic UART service, as served by the Leo Remote app on the car (BluetoothServer.kt).
+  const PAGE_VERSION = "0.4.0";
+  // Nordic UART service: the car's Bluetooth LE serial line.
   const NUS = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
   const RX = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"; // phone -> car
   const TX = "6e400003-b5a3-f393-e0a9-e50e24dcca9e"; // car -> phone (notifications)
-  const QUIET_MS = 350;        // a reply is complete after this long without new packets
+  const QUIET_MS = 350;          // a Bluetooth reply is complete after this long without new packets
   const REPLY_TIMEOUT_MS = 25000;
-  const DEMO = new URLSearchParams(location.search).has("demo");
-  // Served by the car itself over Wi-Fi (http://CAR_IP:8686/): talk to it with fetch instead of Bluetooth.
+  const POLL_MS = 20000;
+  const params = new URLSearchParams(location.search);
+  const DEMO = params.has("demo");
+  // Served by the car itself (http://CAR_IP:8686/, over Wi-Fi or Tailscale): use fetch, not Bluetooth.
   const WIFI = !DEMO && location.protocol === "http:" && location.port === "8686";
   const WIFI_PORT = 8686;
 
   const $ = (id) => document.getElementById(id);
-  const PREFIX = DEMO ? "leo-demo." : "leo."; // the demo never touches the real saved PIN
+  const PREFIX = DEMO ? "leo-demo." : "leo.";
   const store = {
     get(k, d) { try { const v = localStorage.getItem(PREFIX + k); return v === null ? d : v; } catch { return d; } },
     set(k, v) { try { localStorage.setItem(PREFIX + k, v); } catch {} },
     del(k) { try { localStorage.removeItem(PREFIX + k); } catch {} },
   };
 
-  // ---------------------------------------------------------------- state
+  // ------------------------------------------------------------ error log (this phone)
+  function phoneErrors() { try { return JSON.parse(store.get("errors", "[]")) || []; } catch { return []; } }
+  function logError(where, msg) {
+    const list = phoneErrors();
+    list.push({ t: Date.now(), where, msg: String(msg && msg.message ? msg.message : msg).slice(0, 300) });
+    while (list.length > 100) list.shift();
+    store.set("errors", JSON.stringify(list));
+    renderPhoneErrors();
+  }
+  function renderPhoneErrors() {
+    const list = phoneErrors();
+    $("phoneErrors").textContent = list.length
+      ? list.slice().reverse().map((e) => `${fmtTime(e.t)} [${e.where}] ${e.msg}`).join("\n")
+      : "No errors. 👍";
+  }
+  window.addEventListener("error", (e) => logError("page", (e.message || "error") + (e.lineno ? " (line " + e.lineno + ")" : "")));
+  window.addEventListener("unhandledrejection", (e) => logError("page", (e.reason && e.reason.message) || e.reason));
+
+  // ------------------------------------------------------------ state
   let link = null;           // { write(text), close() }
   let authed = false;
   let pending = null;        // { resolve, reject, timer }
   let rxBuf = "";
   let quietTimer = null;
   let queue = Promise.resolve();
-  let temp = Math.min(30, Math.max(16, parseInt(store.get("temp", "22"), 10) || 22));
+  let connecting = false;
+  let bleDevice = null;
+  let userDisconnected = false;
+  let retryTimer = null, retryDelay = 2000;
+  let pollTimer = null;
+  let last = null;           // last status JSON
+  let connectedLabel = null; // pill text while connected
+  let tempTouched = false;
+  let temp = clampTemp(parseInt(store.get("temp", "22"), 10));
 
-  // ---------------------------------------------------------------- UI helpers
+  function clampTemp(t) { return Math.min(30, Math.max(16, t || 22)); }
+  function fmtTime(t) { return new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
+  function ago(t) {
+    const s = Math.max(0, (Date.now() - t) / 1000);
+    if (s < 60) return "now";
+    if (s < 3600) return Math.floor(s / 60) + " min";
+    if (s < 86400) return Math.floor(s / 3600) + " h";
+    return new Date(t).toLocaleDateString([], { day: "numeric", month: "short" });
+  }
+
+  // ------------------------------------------------------------ ui helpers
   function setPill(state, text) { $("pill").dataset.state = state; $("pillText").textContent = text; }
   let toastTimer;
   function toast(text, bad = false) {
@@ -281,50 +567,88 @@
     t.textContent = text; t.classList.toggle("bad", bad); t.classList.add("show");
     clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), bad ? 6000 : 3500);
   }
-  function log(dir, text) {
-    const el = $("log");
-    const line = document.createElement("div");
-    const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-    line.innerHTML = `<b>${dir === "out" ? "→" : "←"} ${time}</b> `;
-    line.appendChild(document.createTextNode(text));
-    el.prepend(line);
-    while (el.childNodes.length > 60) el.lastChild.remove();
+  function msg(dir, text) {
+    const el = $("msgLog");
+    const line = `${fmtTime(Date.now())} ${dir === "out" ? "→" : "←"} ${text}`;
+    el.textContent = (line + "\n" + el.textContent).slice(0, 6000);
   }
-  function renderTemp() { $("tempOut").textContent = temp + "°C"; store.set("temp", String(temp)); }
+  function renderTemp() {
+    $("tempOut").textContent = temp;
+    document.querySelectorAll(".tempTxt").forEach((e) => (e.textContent = temp + "°"));
+    store.set("temp", String(temp));
+  }
+  function showTab(name) {
+    document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("hidden", t.id !== "tab-" + name));
+    document.querySelectorAll("nav.tabs button").forEach((b) => b.classList.toggle("sel", b.dataset.tab === name));
+    store.set("tab", name);
+    window.scrollTo(0, 0);
+    if (name === "more") renderPhoneErrors();
+  }
   function refreshSetup() {
     const hasPin = !!store.get("pin", "");
     $("setup").classList.toggle("hidden", hasPin);
-    $("connectBtn").disabled = !hasPin;
-    $("connectHint").textContent = !hasPin ? "Enter the PIN first."
-      : WIFI ? "Your phone must be on the same Wi-Fi as the car, and the car awake (on, or sentry mode on)."
-      : "Stand near the car. It must be awake (on, or sentry mode on).";
-  }
-  function setConnectedUI(connected) {
-    $("connectCard").classList.toggle("hidden", connected);
-    $("disconnectBtn").classList.toggle("hidden", !connected);
+    const needButton = hasPin && !WIFI && !link;
+    $("connectCard").classList.toggle("hidden", !needButton);
+    $("connectHint").textContent = "Stand near the car. It must be awake (on, or sentry mode on). After the first time it reconnects by itself while this page is open.";
   }
 
-  // ---------------------------------------------------------------- transport
+  // ------------------------------------------------------------ transport
   function onData(text) {
     rxBuf += text;
     clearTimeout(quietTimer);
     quietTimer = setTimeout(flushReply, QUIET_MS);
   }
-
   function flushReply() {
-    const msg = rxBuf.replace(/\r/g, "").trim();
+    const m = rxBuf.replace(/\r/g, "").trim();
     rxBuf = "";
-    if (!msg) return;
-    log("in", msg);
-    if (pending) {
-      const p = pending; pending = null; clearTimeout(p.timer); p.resolve(msg);
-    }
+    if (!m) return;
+    msg("in", m.length > 300 ? m.slice(0, 300) + "…" : m);
+    if (pending) { const p = pending; pending = null; clearTimeout(p.timer); p.resolve(m); }
   }
 
-  async function connectBle() {
-    if (!navigator.bluetooth) throw new Error("This browser can't use Bluetooth. Open the page in Bluefy.");
-    const device = await navigator.bluetooth.requestDevice({ filters: [{ services: [NUS] }] });
-    device.addEventListener("gattserverdisconnected", onDisconnected);
+  // Wi-Fi / Tailscale: the page came from the car, so it calls the car's small web server.
+  async function api(path, body, headers = {}) {
+    let r;
+    try {
+      r = await fetch(path, { method: "POST", cache: "no-store", body, headers: { "Content-Type": "text/plain", "X-Leo": "1", ...headers } });
+    } catch {
+      const e = new Error("Can't reach the car. Is it awake, and is your phone on the same Wi-Fi (or Tailscale on)?");
+      e.network = true; throw e;
+    }
+    let j = {};
+    try { j = await r.json(); } catch {}
+    return { status: r.status, j };
+  }
+  async function wifiLogin(pin) {
+    const { status, j } = await api("/api/login", JSON.stringify({ pin }));
+    if (status === 200 && j.token) { store.set("token", j.token); return; }
+    const e = new Error(j.error || "Sign-in failed (" + status + ")");
+    e.wrongPin = status === 403 && /Wrong PIN/i.test(j.error || "");
+    throw e;
+  }
+  async function connectWifi(pin) {
+    if (!store.get("token", "")) await wifiLogin(pin);
+    return {
+      async write(text) {
+        const send = () => api("/api/cmd", text, { "X-Leo-Token": store.get("token", "") });
+        let r = await send();
+        if (r.status === 401) { store.del("token"); await wifiLogin(store.get("pin", "")); r = await send(); }
+        if (r.status !== 200) throw new Error(r.j.error || "The car said error " + r.status);
+        onData(String(r.j.reply || "") + "\n");
+        clearTimeout(quietTimer); flushReply();
+      },
+      close() { setTimeout(onDisconnected, 0); },
+    };
+  }
+
+  async function connectBle(device) {
+    if (!navigator.bluetooth) throw new Error("This browser can't use Bluetooth. Open the page in Bluefy, or use Wi-Fi.");
+    if (!device) device = await navigator.bluetooth.requestDevice({ filters: [{ services: [NUS] }] });
+    if (bleDevice !== device) {
+      device.addEventListener("gattserverdisconnected", onBleGone);
+      bleDevice = device;
+    }
+    if (device.id) store.set("bleId", device.id);
     setPill("busy", "Connecting…");
     const server = await device.gatt.connect();
     const service = await server.getPrimaryService(NUS);
@@ -336,112 +660,38 @@
     return {
       async write(text) {
         const data = enc.encode(text + "\n");
-        if (rx.writeValueWithResponse) await rx.writeValueWithResponse(data);
-        else await rx.writeValue(data);
+        if (rx.writeValueWithResponse) await rx.writeValueWithResponse(data); else await rx.writeValue(data);
       },
       close() { try { device.gatt.disconnect(); } catch {} },
     };
   }
-
-  // Wi-Fi: the page came from the car, so it calls the car's small web server on the same address.
-  async function api(path, body, headers = {}) {
-    let r;
-    try {
-      r = await fetch(path, { method: "POST", cache: "no-store", body,
-        headers: { "Content-Type": "text/plain", "X-Leo": "1", ...headers } });
-    } catch {
-      throw new Error("Can't reach the car on Wi-Fi. Is it awake and on the same Wi-Fi as your phone?");
-    }
-    let j = {};
-    try { j = await r.json(); } catch {}
-    return { status: r.status, j };
+  function onBleGone() {
+    const wasConnected = !!link;
+    onDisconnected();
+    if (wasConnected && !userDisconnected) logError("bluetooth", "connection dropped");
+    scheduleRetry();
   }
-
-  async function wifiLogin(pin) {
-    const { status, j } = await api("/api/login", JSON.stringify({ pin }));
-    if (status === 200 && j.token) { store.set("token", j.token); return; }
-    const e = new Error(j.error || "Sign-in failed (" + status + ")");
-    e.wrongPin = status === 403 && /Wrong PIN/i.test(j.error || "");
-    throw e;
-  }
-
-  async function connectWifi(pin) {
-    if (!store.get("token", "")) await wifiLogin(pin);
-    return {
-      async write(text) {
-        const send = () => api("/api/cmd", text, { "X-Leo-Token": store.get("token", "") });
-        let r = await send();
-        if (r.status === 401) { // signed out (new PIN on the car, or too many phones): sign in again
-          store.del("token");
-          await wifiLogin(store.get("pin", ""));
-          r = await send();
-        }
-        if (r.status !== 200) throw new Error(r.j.error || "The car said error " + r.status);
-        onData(String(r.j.reply || "") + "\n");
-        clearTimeout(quietTimer); flushReply();
-      },
-      close() { setTimeout(onDisconnected, 0); },
-    };
-  }
-
-  // A simulated car for trying the page out (?demo). Never used otherwise.
-  function connectDemo() {
-    const car = { locked: true, ac: false, temp: 22, sentry: true, windows: 0, soc: 71 };
-    let ok = false;
-    const status = () =>
-      `🚗 Car status · ${new Date().toTimeString().slice(0, 5)}\n` +
-      `🔋 ${"▰".repeat(7)}${"▱".repeat(3)} ${car.soc}% · 412 km\n` +
-      `${car.locked ? "🔒 Locked" : "🔓 UNLOCKED"} · doors closed\n` +
-      `🪟 ${car.windows ? "windows " + car.windows + "%" : "windows closed"} · sunroof closed\n` +
-      `❄️ ${car.ac ? "A/C on (" + car.temp + "°C)" : "A/C off"} · inside 24°C, outside 31°C\n` +
-      `🛞 FL 250 FR 250 RL 245 RR 248 kPa\n` +
-      `⚙️ power off · gear P · 12V 12.6 V\n🛡 Sentry ${car.sentry ? "on" : "off"} · 18,240 km`;
-    const answer = (line) => {
-      const l = line.toLowerCase();
-      if (!ok) {
-        if (!l.startsWith("pin")) return "🔒 Send: pin <code shown on the car screen>";
-        if (line.slice(3).trim() !== "123456") return "Wrong PIN.";
-        ok = true; return "✅ PIN accepted. Commands: status, lock, unlock, ac 22, ac off, windows close, vent, trunk, flash, sentry on/off, help";
-      }
-      if (l === "status") return status();
-      if (l === "lock") { car.locked = true; return "✅ Locked 🔒"; }
-      if (l.startsWith("unlock")) { car.locked = false; return l.includes("driver") ? "✅ Driver door unlocked 🔓" : "✅ Unlocked 🔓"; }
-      if (l.startsWith("ac off")) { car.ac = false; return "✅ A/C off"; }
-      if (l.startsWith("ac")) { car.ac = true; const t = parseInt(l.split(" ")[1], 10); if (t) car.temp = t; return `✅ A/C on, set to ${car.temp}°C ❄️`; }
-      if (l === "warmup") { car.ac = true; car.temp = 26; return "✅ 🔥 Warming up (4 of 4 done)\n• A/C on, set to 26°C ❄️\n• Defrost on: windscreen + rear window\n• Driver seat heating on, level 2\n• Steering wheel heating on 🔥"; }
-      if (l === "cooldown") { car.ac = true; car.temp = 16; return "✅ 🧊 Cooling down (2 of 2 done)\n• Max cooling: A/C on at 16°C 🧊\n• Driver seat ventilation on, level 2"; }
-      if (l.startsWith("windows")) { car.windows = l.includes("close") ? 0 : l.includes("vent") ? 10 : 100; return "✅ Windows to " + car.windows + "% 🪟"; }
-      if (l.startsWith("sentry")) { car.sentry = l.endsWith("on"); return car.sentry ? "✅ Sentry mode on 🛡" : "✅ Sentry mode off"; }
-      if (l === "where") return "📍 33.8938, 35.5018 (±8 m, 2 min ago)";
-      if (l === "flash") return "✅ Flashed the hazard lights for 6 s 💡";
-      return "✅ Done: " + line;
-    };
-    setTimeout(() => onData("Leo Remote. Send: pin <code shown on the car screen>\n"), 300);
-    return Promise.resolve({
-      write(text) {
-        const reply = answer(text.trim()) + "\n";
-        // Arrives in 20-byte packets, like real BLE notifications.
-        const bytes = new TextEncoder().encode(reply);
-        let i = 0;
-        const tick = () => {
-          if (i >= bytes.length) return;
-          let end = Math.min(i + 20, bytes.length);
-          while (end < bytes.length && (bytes[end] & 0xc0) === 0x80) end--; // don't split a character
-          onData(new TextDecoder().decode(bytes.slice(i, end))); i = end; setTimeout(tick, 15);
-        };
-        setTimeout(tick, text.startsWith("flash") ? 1200 : 250);
-        return Promise.resolve();
-      },
-      close() { setTimeout(onDisconnected, 50); },
-    });
+  function autoBt() { return store.get("autoBt", "1") === "1"; }
+  // Keep trying to get back to the car while the page is open (out of range, car asleep...).
+  function scheduleRetry() {
+    clearTimeout(retryTimer);
+    if (userDisconnected || document.hidden || link || !store.get("pin", "")) return;
+    if (!WIFI && !(bleDevice && autoBt()) && !DEMO) return;
+    setPill("busy", WIFI ? "Car not reachable, retrying…" : "Looking for the car…");
+    retryTimer = setTimeout(async () => {
+      const ok = await connect({ device: bleDevice, silent: true });
+      if (ok) retryDelay = 2000; else { retryDelay = Math.min(retryDelay * 2, 15000); scheduleRetry(); }
+    }, retryDelay);
   }
 
   function onDisconnected() {
     link = null; authed = false;
     if (pending) { const p = pending; pending = null; clearTimeout(p.timer); p.reject(new Error("Disconnected")); }
     setPill("idle", "Not connected");
-    setConnectedUI(false);
-    document.querySelectorAll("button.working").forEach((b) => b.classList.remove("working"));
+    $("connNow").textContent = "Not connected";
+    clearInterval(pollTimer);
+    document.querySelectorAll(".working").forEach((b) => b.classList.remove("working"));
+    refreshSetup();
   }
 
   /** Sends one line and waits for the car's whole reply. Commands run one at a time. */
@@ -449,7 +699,7 @@
     const run = () => new Promise((resolve, reject) => {
       if (!link) return reject(new Error("Not connected"));
       pending = { resolve, reject, timer: setTimeout(() => { pending = null; reject(new Error("The car didn't answer")); }, REPLY_TIMEOUT_MS) };
-      log("out", line.startsWith("pin") ? "pin ••••••" : line);
+      if (line !== "status json") msg("out", line.startsWith("pin") ? "pin ••••••" : line);
       link.write(line).catch((e) => { if (pending) { clearTimeout(pending.timer); pending = null; } reject(e); });
     });
     const p = queue.then(run, run);
@@ -457,115 +707,314 @@
     return p;
   }
 
-  async function connect() {
+  /** Connects (Wi-Fi, Bluetooth or demo) and signs in. Returns true when connected. */
+  async function connect(opts = {}) {
     const pin = store.get("pin", "");
-    if (!pin) { refreshSetup(); return; }
+    if (!pin) { refreshSetup(); return false; }
+    if (connecting || link) return !!link;
+    connecting = true; userDisconnected = false;
     $("connectBtn").disabled = true;
     try {
       if (WIFI) {
-        setPill("busy", "Connecting over Wi-Fi…");
+        setPill("busy", "Connecting…");
         link = await connectWifi(pin);
         authed = true;
-        const s = await request("status"); // proves the car answers (and the PIN is right)
-        if (/Car status/.test(s)) { $("status").textContent = s; $("status").classList.remove("empty"); }
-        else toast(s, s.startsWith("⚠️"));
-        setPill("ready", "Connected over Wi-Fi");
-        setConnectedUI(true);
-        return;
+      } else {
+        setPill("busy", opts.device ? "Connecting…" : "Pick the car…");
+        link = DEMO ? await connectDemo() : await connectBle(opts.device);
+        setPill("busy", "Checking PIN…");
+        await new Promise((r) => setTimeout(r, 400)); // let the greeting arrive first
+        rxBuf = ""; clearTimeout(quietTimer);
+        const reply = await request("pin " + pin);
+        if (!/PIN accepted/i.test(reply)) {
+          const e = new Error(reply); e.wrongPin = /Wrong PIN/i.test(reply); throw e;
+        }
+        authed = true;
       }
-      setPill("busy", "Pick the car…");
-      link = DEMO ? await connectDemo() : await connectBle();
-      setPill("busy", "Checking PIN…");
-      await new Promise((r) => setTimeout(r, 500)); // let the greeting arrive first
-      rxBuf = ""; clearTimeout(quietTimer);
-      const reply = await request("pin " + pin);
-      if (!/PIN accepted/i.test(reply)) {
-        toast(reply, true);
-        if (/Wrong PIN/i.test(reply)) { store.del("pin"); refreshSetup(); }
-        link.close(); onDisconnected(); setPill("error", "PIN refused");
-        return;
-      }
-      authed = true;
-      setPill("ready", DEMO ? "Demo car" : "Connected");
-      setConnectedUI(true);
-      await refreshStatus();
+      connectedLabel = null;
+      await refreshStatus(true); // proves the car answers
+      const how = DEMO ? "Demo car" : WIFI ? (isTailnetHost() ? "Connected · internet" : "Connected · Wi-Fi") : "Connected · Bluetooth";
+      connectedLabel = how;
+      setPill("ready", how);
+      $("connNow").textContent = how;
+      refreshSetup();
+      clearInterval(pollTimer);
+      pollTimer = setInterval(() => { if (!document.hidden && link) refreshStatus(false); }, POLL_MS);
+      loadEvents();
+      return true;
     } catch (e) {
-      if (link) link.close();
+      const l = link; link = null; authed = false;
+      if (l && !WIFI) l.close();
       onDisconnected();
-      if (e && e.name === "NotFoundError") { setPill("idle", "Not connected"); return; } // picker closed
-      if (e && e.wrongPin) { store.del("pin"); store.del("token"); refreshSetup(); setPill("error", "PIN refused"); toast(e.message, true); return; }
-      setPill("error", "Couldn't connect");
-      toast((e && e.message) || "Couldn't connect", true);
+      if (e && e.name === "NotFoundError") { setPill("idle", "Not connected"); return false; } // picker closed
+      if (e && e.wrongPin) {
+        store.del("pin"); store.del("token"); refreshSetup();
+        setPill("error", "PIN refused"); toast(e.message, true); logError("sign-in", e.message);
+        return false;
+      }
+      setPill("error", WIFI ? "Car not reachable" : "Couldn't connect");
+      logError(WIFI ? "wifi" : "bluetooth", (e && e.message) || e);
+      if (!opts.silent) toast((e && e.message) || "Couldn't connect", true);
+      return false;
     } finally {
-      $("connectBtn").disabled = !store.get("pin", "");
+      connecting = false;
+      $("connectBtn").disabled = false;
+    }
+  }
+  function isTailnetHost() { const p = location.hostname.split(".").map(Number); return p[0] === 100 && p[1] >= 64 && p[1] <= 127; }
+
+  // ------------------------------------------------------------ status
+  async function refreshStatus(throwOnError) {
+    try {
+      const s = await request("status json");
+      let st;
+      try { st = JSON.parse(s); } catch { throw new Error(/Car status/.test(s) ? "Update the Leo Remote app on the car (it doesn't send app data yet)." : s); }
+      if (st.error) throw new Error("The car couldn't read its status: " + st.error);
+      last = st; render(st);
+      if (connectedLabel && $("pill").dataset.state !== "ready") setPill("ready", connectedLabel); // back after a dropout
+    } catch (e) {
+      logError("status", e.message || e);
+      if (throwOnError) throw e;
+      if (WIFI && e.network) setPill("error", "Car not reachable");
     }
   }
 
-  async function refreshStatus() {
-    try {
-      const s = await request("status");
-      if (/Car status/.test(s)) { $("status").textContent = s; $("status").classList.remove("empty"); }
-      else toast(s, s.startsWith("⚠️"));
-    } catch (e) { toast(e.message, true); }
+  function chip(text, cls = "", icon = "") {
+    return `<span class="chip ${cls}">${icon ? `<svg class="i"><use href="#i-${icon}"/></svg>` : ""}${text}</span>`;
+  }
+  function render(s) {
+    const soc = s.soc;
+    $("soc").innerHTML = (soc != null ? Math.round(soc) : "––") + "<small>%</small>";
+    const parts = [];
+    if (s.rangeKm != null) parts.push(`<b>${s.rangeKm} km</b> range`);
+    if (s.charging) parts.push("charging");
+    else if (s.plugged) parts.push("plugged in");
+    $("range").innerHTML = parts.join(" · ") || "Battery";
+    const bar = $("socBar");
+    bar.firstElementChild.style.width = (soc != null ? Math.max(2, Math.min(100, soc)) : 0) + "%";
+    bar.classList.toggle("low", soc != null && soc < 20);
+    bar.classList.toggle("mid", soc != null && soc >= 20 && soc < 40);
+    $("updated").textContent = s.time ? "Updated " + fmtTime(s.time) : "";
+    $("carPic").classList.toggle("on", s.power === "on" || s.power === "driving");
+
+    const c = [];
+    if (s.locked === true) c.push(chip("Locked", "ok", "lock"));
+    else if (s.locked === false) c.push(chip("Unlocked", "warn", "unlock"));
+    if (s.power) c.push(chip(s.power === "off" ? "Off" : s.power === "on" ? "On" : "Driving", s.power === "off" ? "" : "blue", "power"));
+    if (s.charging) c.push(chip("Charging", "ok", "bolt"));
+    else if (s.plugged) c.push(chip("Plugged in", "blue", "plug"));
+    if (s.sentry != null) c.push(chip(s.sentry ? "Sentry on" : "Sentry off", s.sentry ? "blue" : "", "shield"));
+    const open = openThings(s);
+    if (open.length) c.push(chip(open.join(", ") + " open", "bad", "alert"));
+    if (s.acOn) c.push(chip("A/C " + (s.acTemp ? s.acTemp + "°" : "on"), "blue", "snow"));
+    if (s.key && s.key.on) c.push(chip("Phone key", "blue", "key"));
+    $("chips").innerHTML = c.join("") || chip("No data");
+
+    // climate
+    const inside = s.inside != null ? s.inside + "°" : "–", outside = s.outside != null ? s.outside + "°" : "–";
+    $("inT").textContent = inside; $("inT2").textContent = inside; $("outT").textContent = outside; $("outT2").textContent = outside;
+    $("acState").textContent = s.acOn == null ? "–" : s.acOn ? "on" + (s.acTemp ? " " + s.acTemp + "°" : "") : "off";
+    $("dialLbl").textContent = s.acOn ? "A/C on" + (s.acTemp ? " · set " + s.acTemp + "°" : "") : "A/C off";
+    $("dialRing").classList.toggle("on", !!s.acOn);
+    if (!tempTouched && s.acOn && s.acTemp) { temp = clampTemp(s.acTemp); renderTemp(); }
+
+    // tiles
+    setTile("tDoors", s.doorsOpen == null ? "–" : s.doorsOpen.length ? s.doorsOpen.join(", ") + " open" : "All closed", s.doorsOpen && s.doorsOpen.length ? "bad" : "ok");
+    const w = s.windows ? Object.entries(s.windows).filter(([, v]) => v > 0) : null;
+    setTile("tWindows", !s.windows ? "–" : w.length ? w.map(([k, v]) => short(k) + " " + v + "%").join(" · ") : "All closed", w && w.length ? "bad" : "ok");
+    const trunk = [s.trunkOpen ? "Rear open" : null, s.frunkOpen ? "Front open" : null, s.hoodOpen ? "Hood open" : null].filter(Boolean);
+    setTile("tTrunk", s.trunkOpen == null && s.frunkOpen == null ? "–" : trunk.length ? trunk.join(", ") : "Closed", trunk.length ? "bad" : "ok");
+    setTile("tRoof", s.sunroof == null ? "–" : s.sunroof === 0 ? "Closed" : s.sunroof + "% open", s.sunroof ? "bad" : "ok");
+    setTile("tTires", s.tires ? ["FL", "FR", "RL", "RR"].map((k) => s.tires[k] != null ? (s.tires[k] / 100).toFixed(1) : "–").join(" · ") : "–");
+    setTile("t12", s.v12 != null ? s.v12.toFixed(1) + " V" : "–", s.v12 != null && s.v12 < 11.8 ? "bad" : "");
+    setTile("tOdo", s.odometer != null ? s.odometer.toLocaleString() + " km" : "–");
+    setTile("tGear", s.gear ? s.gear + (s.speed ? " · " + s.speed + " km/h" : "") : "–");
+
+    // phone key + connection
+    if (s.key) {
+      const k = s.key;
+      $("keyChip").textContent = k.on ? "On" : "Off";
+      $("keyChip").className = "chip " + (k.on ? "ok" : "");
+      $("keyPhone").textContent = k.phone || "None registered (set it up on the car screen)";
+      $("keyState").textContent = (k.state || "–").replace(/^Phone key:\s*/i, "");
+      const modes = [k.unlockOnArrive ? (k.driverOnly ? "unlock driver door when I arrive" : "unlock when I arrive") : null, k.lockOnLeave ? "lock when I leave" : null].filter(Boolean);
+      $("keyModes").textContent = modes.join(", ") || "nothing (switch modes on in the car app)";
+    }
+    if (s.remote) {
+      $("connWifi").textContent = s.remote.wifi || "not on Wi-Fi";
+      $("connTs").textContent = s.remote.tailscale || "Tailscale not running on the car";
+      const saved = store.get("carIp", "");
+      const pick = (s.remote.tailscale || s.remote.wifi || "").replace(/^http:\/\//, "").replace(/:\d+$/, "");
+      if (!saved && pick) { store.set("carIp", pick); $("carIp").value = pick; }
+    }
+    $("versions").textContent = `Page ${PAGE_VERSION}` + (s.app ? ` · car app ${s.app}` : "");
+  }
+  function setTile(id, text, cls = "") { const e = $(id); e.textContent = text; e.className = "v " + cls; }
+  function short(k) { return { "front left": "FL", "front right": "FR", "rear left": "RL", "rear right": "RR" }[k] || k; }
+  function openThings(s) {
+    const o = [];
+    if (s.doorsOpen && s.doorsOpen.length) o.push(s.doorsOpen.length === 1 ? "door" : "doors");
+    if (s.trunkOpen) o.push("trunk");
+    if (s.frunkOpen) o.push("front trunk");
+    if (s.hoodOpen) o.push("hood");
+    if (s.windows && Object.values(s.windows).some((v) => v > 0)) o.push("windows");
+    return o;
   }
 
+  async function loadEvents() {
+    try {
+      const r = await request("events");
+      const list = JSON.parse(r);
+      $("feed").innerHTML = list.length
+        ? list.slice().reverse().slice(0, 25).map((e) => `<div class="row"><span class="t">${ago(e.t)}</span><span>${escapeHtml(e.text)}</span></div>`).join("")
+        : `<div class="empty">Nothing yet. Alerts from the car show up here.</div>`;
+    } catch (e) { logError("activity", e.message || e); }
+  }
+  function escapeHtml(s) { return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+  async function findCar() {
+    if (!link) { toast("Connect to the car first."); return; }
+    $("locRefresh").classList.add("working");
+    try {
+      const r = await request("where json");
+      let f;
+      try { f = JSON.parse(r); } catch { throw new Error(r.replace(/^📍\s*/, "")); }
+      const lat = f.lat.toFixed(6), lon = f.lon.toFixed(6);
+      const d = 0.004;
+      $("map").src = `https://www.openstreetmap.org/export/embed.html?bbox=${f.lon - d},${f.lat - d * 0.6},${f.lon + d},${f.lat + d * 0.6}&layer=mapnik&marker=${lat},${lon}`;
+      $("gmaps").href = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
+      $("amaps").href = `https://maps.apple.com/?q=My%20car&ll=${lat},${lon}`;
+      const age = f.ageSec < 90 ? "just now" : f.ageSec < 3600 ? Math.round(f.ageSec / 60) + " min ago" : Math.round(f.ageSec / 3600) + " h ago";
+      $("coords").textContent = `${lat}, ${lon}` + (f.accuracy ? ` · ±${Math.round(f.accuracy)} m` : "") + ` · ${age}`;
+      ["map", "coords", "locBtns"].forEach((id) => $(id).classList.remove("hidden"));
+      $("locEmpty").classList.add("hidden");
+    } catch (e) {
+      toast(e.message || "Couldn't get the location", true); logError("location", e.message || e);
+    } finally { $("locRefresh").classList.remove("working"); }
+  }
+
+  // ------------------------------------------------------------ commands
   async function runCommand(cmd, btn) {
     if (!link || !authed) { toast("Connect to the car first."); return; }
     btn && btn.classList.add("working");
     try {
       const reply = await request(cmd);
-      if (cmd === "status") {
-        if (/Car status/.test(reply)) { $("status").textContent = reply; $("status").classList.remove("empty"); }
-        else toast(reply, true);
-        return;
-      }
-      const bad = reply.startsWith("❌") || reply.startsWith("⚠️") || /^Won't|refused/i.test(reply);
+      const bad = /^(❌|⚠️)/.test(reply) || /^Won't|refused|Use:/i.test(reply);
       toast(reply, bad);
-      if (reply.startsWith("✅")) setTimeout(refreshStatus, 1500); // show the change
+      if (bad) logError("command", cmd + " → " + reply);
+      if (reply.startsWith("✅") || /Phone key/i.test(reply)) setTimeout(() => refreshStatus(false), 1500);
     } catch (e) {
-      toast(e.message, true);
-    } finally {
-      btn && btn.classList.remove("working");
-    }
+      toast(e.message, true); logError("command", cmd + " → " + e.message);
+    } finally { btn && btn.classList.remove("working"); }
   }
 
-  // ---------------------------------------------------------------- wiring
   // Risky buttons need a second tap within 3 s.
   function armOrRun(btn) {
     const confirmText = btn.dataset.confirm;
-    if (!confirmText || btn.classList.contains("danger-armed")) {
-      if (btn.dataset.label) { btn.innerHTML = btn.dataset.label; delete btn.dataset.label; }
-      btn.classList.remove("danger-armed");
-      clearTimeout(btn._disarm);
-      runCommand(btn.dataset.cmd, btn);
-      return;
-    }
+    const restore = () => { btn.classList.remove("armed"); if (btn._label != null) { btn.innerHTML = btn._label; btn._label = null; } };
+    if (!confirmText || btn.classList.contains("armed")) { clearTimeout(btn._disarm); restore(); runCommand(btn.dataset.cmd, btn); return; }
     if (!link || !authed) { toast("Connect to the car first."); return; }
-    btn.dataset.label = btn.innerHTML;
-    btn.textContent = confirmText;
-    btn.classList.add("danger-armed");
-    btn._disarm = setTimeout(() => {
-      btn.classList.remove("danger-armed");
-      if (btn.dataset.label) { btn.innerHTML = btn.dataset.label; delete btn.dataset.label; }
-    }, 3000);
+    btn._label = btn.innerHTML;
+    if (btn.classList.contains("act")) btn.innerHTML = btn.querySelector(".ring").outerHTML + confirmText;
+    else btn.textContent = confirmText;
+    btn.classList.add("armed");
+    btn._disarm = setTimeout(restore, 3000);
   }
 
+  // ------------------------------------------------------------ demo car (?demo)
+  function connectDemo() {
+    const car = { locked: true, ac: false, temp: 22, sentry: true, win: 0, soc: 71, power: "off", key: true, trunk: false };
+    let ok = false;
+    const answer = (line) => {
+      const l = line.toLowerCase();
+      if (!ok) {
+        if (!l.startsWith("pin")) return "🔒 Send: pin <code shown on the car screen>";
+        if (line.slice(3).trim() !== "123456") return "Wrong PIN.";
+        ok = true; return "✅ PIN accepted.";
+      }
+      if (l === "status json") return JSON.stringify({ time: Date.now(), soc: car.soc, rangeKm: 412, charging: false, plugged: false, locked: car.locked,
+        doorsOpen: [], trunkOpen: car.trunk, frunkOpen: false, hoodOpen: false, windows: { "front left": car.win, "front right": car.win, "rear left": 0, "rear right": 0 },
+        sunroof: 0, acOn: car.ac, acTemp: car.temp, inside: car.ac ? 23 : 31, outside: 34, tires: { FL: 250, FR: 252, RL: 245, RR: 248 }, power: car.power, gear: "P", speed: 0,
+        v12: 12.6, odometer: 18240, sentry: car.sentry, guard: 30, defaultTemp: 22,
+        key: { on: car.key, phone: "iPhone", unlockOnArrive: true, lockOnLeave: false, driverOnly: false, state: car.key ? "Phone key: watching for iPhone" : "Phone key: off" },
+        remote: { wifi: "http://192.168.1.57:8686", tailscale: "http://100.101.7.42:8686" }, app: "0.4.0 (demo)" });
+      if (l === "where json") return JSON.stringify({ lat: 33.893791, lon: 35.501778, accuracy: 8, ageSec: 40 });
+      if (l === "events") return JSON.stringify([
+        { t: Date.now() - 3 * 3600e3, text: "⚡ Charging finished at 80%." },
+        { t: Date.now() - 50 * 60e3, text: "🔑 Your iPhone arrived: unlocked." },
+        { t: Date.now() - 20 * 60e3, text: "⏰ 07:30 warmup\n✅ 🔥 Warming up (4 of 4 done)" }]);
+      if (l === "errors") return JSON.stringify(["11-22 09:14:02 W Vehicle: TrunkOpen: ❌ The car refused: Trunk open (code -2)."]);
+      if (l === "lock") { car.locked = true; return "✅ Locked 🔒"; }
+      if (l === "off") { car.power = "off"; car.ac = false; car.locked = true; return "✅ Car switched off and locked 🔒"; }
+      if (l.startsWith("unlock")) { car.locked = false; return l.includes("driver") ? "✅ Driver door unlocked 🔓" : "✅ Unlocked 🔓"; }
+      if (l.startsWith("ac off")) { car.ac = false; return "✅ A/C off"; }
+      if (l.startsWith("ac")) { car.ac = true; car.power = "on"; const t = parseInt(l.split(" ")[1], 10); if (t) car.temp = t; return `✅ A/C on, set to ${car.temp}°C ❄️`; }
+      if (l === "warmup") { car.ac = true; car.temp = 26; return "✅ 🔥 Warming up (4 of 4 done)"; }
+      if (l === "cooldown") { car.ac = true; car.temp = 16; return "✅ 🧊 Cooling down (2 of 2 done)"; }
+      if (l.startsWith("windows")) { car.win = l.includes("close") ? 0 : l.includes("vent") ? 10 : l.includes("half") ? 50 : 100; return "✅ Windows to " + car.win + "% 🪟"; }
+      if (l.startsWith("trunk")) { car.trunk = l.includes("open"); return car.trunk ? "✅ Trunk opening" : "✅ Trunk closing"; }
+      if (l.startsWith("sentry")) { car.sentry = l.endsWith("on"); return car.sentry ? "✅ Sentry mode on 🛡" : "✅ Sentry mode off"; }
+      if (l.startsWith("keyfob")) { car.key = l.endsWith("on"); return "🔑 Phone key " + (car.key ? "ON" : "off"); }
+      if (l === "flash") return "✅ Flashed the hazard lights for 6 s 💡";
+      return "✅ Done: " + line;
+    };
+    setTimeout(() => onData("Leo Remote. Send: pin <code shown on the car screen>\n"), 200);
+    return Promise.resolve({
+      write(text) {
+        const bytes = new TextEncoder().encode(answer(text.trim()) + "\n");
+        let i = 0;
+        const tick = () => { // 180-byte packets, like Bluetooth notifications
+          if (i >= bytes.length) return;
+          let end = Math.min(i + 180, bytes.length);
+          while (end < bytes.length && (bytes[end] & 0xc0) === 0x80) end--;
+          onData(new TextDecoder().decode(bytes.slice(i, end))); i = end; setTimeout(tick, 10);
+        };
+        setTimeout(tick, text === "off" || text === "flash" ? 1200 : 200);
+        return Promise.resolve();
+      },
+      close() { setTimeout(onBleGone, 50); },
+    });
+  }
+
+  // ------------------------------------------------------------ wiring
   document.querySelectorAll("[data-cmd]").forEach((b) => b.addEventListener("click", () => armOrRun(b)));
-  $("acOn").addEventListener("click", (e) => runCommand("ac " + temp, e.currentTarget));
-  $("tempDown").addEventListener("click", () => { temp = Math.max(16, temp - 1); renderTemp(); });
-  $("tempUp").addEventListener("click", () => { temp = Math.min(30, temp + 1); renderTemp(); });
-  $("connectBtn").addEventListener("click", connect);
-  $("disconnectBtn").addEventListener("click", () => { if (link) link.close(); });
+  document.querySelectorAll("nav.tabs button").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
+  document.querySelectorAll("[data-goto]").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.goto)));
+  document.querySelectorAll(".seg[data-seg]").forEach((seg) => {
+    seg.querySelectorAll("button").forEach((b) => b.addEventListener("click", async () => {
+      seg.querySelectorAll("button").forEach((x) => x.classList.toggle("sel", x === b));
+      await runCommand(seg.dataset.seg + " " + b.textContent, b);
+    }));
+  });
+  const acOn = (e) => runCommand("ac " + temp, e.currentTarget);
+  $("acOn").addEventListener("click", acOn);
+  $("homeAcOn").addEventListener("click", acOn);
+  $("tempDown").addEventListener("click", () => { temp = clampTemp(temp - 1); tempTouched = true; renderTemp(); });
+  $("tempUp").addEventListener("click", () => { temp = clampTemp(temp + 1); tempTouched = true; renderTemp(); });
+  $("connectBtn").addEventListener("click", () => connect());
+  $("refreshBtn").addEventListener("click", async (e) => {
+    if (!link) { if (WIFI || bleDevice || DEMO) connect({ device: bleDevice }); else toast("Connect to the car first."); return; }
+    const btn = e.currentTarget;
+    btn.classList.add("working");
+    await refreshStatus(false); await loadEvents();
+    btn.classList.remove("working");
+  });
+  $("eventsRefresh").addEventListener("click", () => link ? loadEvents() : toast("Connect to the car first."));
+  $("locRefresh").addEventListener("click", findCar);
+  $("disconnectBtn").addEventListener("click", () => { userDisconnected = true; clearTimeout(retryTimer); if (link) link.close(); else onDisconnected(); });
   $("savePin").addEventListener("click", () => {
     const v = $("pinInput").value.replace(/\D/g, "");
     if (v.length < 4) { toast("That PIN looks too short.", true); return; }
-    store.set("pin", v); $("pinInput").value = ""; refreshSetup(); toast("PIN saved on this phone.");
+    store.set("pin", v); $("pinInput").value = ""; refreshSetup();
+    if (WIFI || DEMO) connect(); else toast("PIN saved. Now tap Connect.");
   });
   $("pinInput").addEventListener("keydown", (e) => { if (e.key === "Enter") $("savePin").click(); });
   $("changePin").addEventListener("click", () => {
     const token = store.get("token", "");
     if (WIFI && token) api("/api/logout", "", { "X-Leo-Token": token }).catch(() => {});
-    store.del("pin"); store.del("token"); if (link) link.close(); refreshSetup(); $("pinInput").focus();
+    userDisconnected = true;
+    store.del("pin"); store.del("token"); if (link) link.close(); onDisconnected(); refreshSetup();
+    window.scrollTo(0, 0); $("pinInput").focus();
   });
   $("carIp").value = store.get("carIp", "");
   $("openWifi").addEventListener("click", () => {
@@ -575,6 +1024,8 @@
     location.href = "http://" + ip + ":" + WIFI_PORT + "/";
   });
   $("carIp").addEventListener("keydown", (e) => { if (e.key === "Enter") $("openWifi").click(); });
+  $("autoBt").checked = autoBt();
+  $("autoBt").addEventListener("change", (e) => { store.set("autoBt", e.target.checked ? "1" : "0"); if (e.target.checked) scheduleRetry(); });
   $("typeForm").addEventListener("submit", (e) => {
     e.preventDefault();
     const v = $("typeInput").value.trim().replace(/^\//, "");
@@ -583,15 +1034,64 @@
     $("typeInput").value = "";
     runCommand(v, e.submitter);
   });
+  $("loadCarErrors").addEventListener("click", async (e) => {
+    if (!link) { toast("Connect to the car first."); return; }
+    const btn = e.currentTarget;
+    btn.classList.add("working");
+    try {
+      const list = JSON.parse(await request("errors"));
+      $("carErrors").textContent = list.length ? list.slice().reverse().join("\n") : "No errors on the car. 👍";
+    } catch (err) { $("carErrors").textContent = "Couldn't load: " + err.message; logError("diagnostics", err.message); }
+    finally { btn.classList.remove("working"); }
+  });
+  $("clearPhoneErrors").addEventListener("click", () => { store.set("errors", "[]"); renderPhoneErrors(); });
+  $("copyDiag").addEventListener("click", async () => {
+    const text = `Leo Remote diagnostics\n${$("versions").textContent}\nMode: ${WIFI ? "wifi" : DEMO ? "demo" : "bluetooth"} · ${$("pillText").textContent}\n\n` +
+      `-- Car --\n${$("carErrors").textContent}\n\n-- Phone --\n${$("phoneErrors").textContent}\n\n-- Messages --\n${$("msgLog").textContent}`;
+    try { await navigator.clipboard.writeText(text); toast("Copied. Paste it to me if something's wrong."); }
+    catch { toast("Couldn't copy on this browser.", true); }
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) return;
+    if (link) refreshStatus(false); else { retryDelay = 1000; scheduleRetry(); }
+  });
 
-  if (!navigator.bluetooth && !DEMO && !WIFI) $("noBt").classList.remove("hidden");
-  if (!WIFI && !DEMO) $("wifiCard").classList.remove("hidden");
-  if (WIFI) $("connectLabel").textContent = "Connect over Wi-Fi";
-  if (DEMO) { document.title = "Leo Remote (demo)"; if (!store.get("pin", "")) store.set("pin", "123456"); }
+  // ------------------------------------------------------------ start
+  if (WIFI) {
+    $("openRemote").classList.add("hidden");
+    $("autoRow").classList.add("hidden");
+  } else if (!navigator.bluetooth && !DEMO) {
+    $("noBt").classList.remove("hidden");
+    $("connectBtn").disabled = true;
+  }
+  if (DEMO) { document.title = "Leo Remote (demo)"; if (!store.get("pin", "")) store.set("pin", "123456"); $("subline").textContent = "Demo car"; }
+  $("versions").textContent = `Page ${PAGE_VERSION}`;
   renderTemp();
+  renderPhoneErrors();
+  showTab(store.get("tab", "home"));
   refreshSetup();
-  setConnectedUI(false);
-  if (WIFI && store.get("pin", "")) connect(); // no picker on Wi-Fi, so connect straight away
+
+  (async () => {
+    if (!store.get("pin", "")) return;
+    if (WIFI || DEMO) { if (!(await connect({ silent: true }))) scheduleRetry(); return; }
+    // Bluetooth: browsers that remember the car (getDevices) can reconnect without a tap.
+    if (navigator.bluetooth && navigator.bluetooth.getDevices && autoBt()) {
+      try {
+        const devices = await navigator.bluetooth.getDevices();
+        const id = store.get("bleId", "");
+        const d = devices.find((x) => x.id === id) || devices[0];
+        if (d) {
+          bleDevice = d;
+          d.addEventListener("gattserverdisconnected", onBleGone);
+          if (d.watchAdvertisements) {
+            d.addEventListener("advertisementreceived", () => { if (!link) connect({ device: d, silent: true }); });
+            d.watchAdvertisements().catch(() => {});
+          }
+          if (!(await connect({ device: d, silent: true }))) scheduleRetry();
+        }
+      } catch (e) { logError("bluetooth", "auto-connect: " + (e.message || e)); }
+    }
+  })();
 })();
 </script>
 </body>
