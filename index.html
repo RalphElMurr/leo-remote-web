@@ -391,6 +391,7 @@
         <button class="btn" data-cmd="light on"><svg class="i"><use href="#i-light"/></svg>Cabin light on</button>
         <button class="btn" data-cmd="light off">Cabin light off</button>
         <button class="btn wide" data-cmd="flash"><svg class="i"><use href="#i-hazard"/></svg>Flash hazard lights</button>
+        <button class="btn wide" data-cmd="hazard off"><svg class="i"><use href="#i-hazard"/></svg>Hazard lights off</button>
       </div>
     </section>
     <section class="card">
@@ -416,6 +417,7 @@
         <a class="btn primary" id="gmaps" target="_blank" rel="noopener noreferrer" style="text-decoration:none"><svg class="i"><use href="#i-map"/></svg>Open in Google Maps</a>
         <a class="btn" id="amaps" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit">Apple Maps</a>
         <button class="btn wide" data-cmd="flash"><svg class="i"><use href="#i-hazard"/></svg>Flash lights to find it</button>
+        <button class="btn wide" data-cmd="hazard off"><svg class="i"><use href="#i-hazard"/></svg>Hazard lights off</button>
       </div>
     </section>
   </main>
@@ -516,7 +518,7 @@
 <script>
 (() => {
   "use strict";
-  const PAGE_VERSION = "0.4.3";
+  const PAGE_VERSION = "0.4.4";
   // Nordic UART service: the car's Bluetooth LE serial line.
   const NUS = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
   const RX = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"; // phone -> car
@@ -1049,6 +1051,7 @@
       if (l === "notify off") { car.notify = false; return "🔕 Notifications off."; }
       if (l === "notify test") return car.notify ? "✅ Test sent. It should pop up in ntfy." : "Turn notifications on first.";
       if (l.startsWith("notify wake")) { car.wakeReports = l.endsWith("on"); return car.wakeReports ? "✅ A quiet report on each wake." : "✅ No wake reports (park reports stay on)."; }
+      if (l === "hazard off") return "✅ Hazard lights off 💡";
       if (l === "flash") return "✅ Flashed the hazard lights for 6 s 💡";
       return "✅ Done: " + line;
     };
